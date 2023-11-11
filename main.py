@@ -8,6 +8,16 @@ AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
 def main():
     print("hello world")
 
+def read_store_data():
+    # Checks for aggregated first, if not found,
+    # then aggregated will be generated and returned
+    if not path.isfile(AGGREGATED_STORE_FILE):
+        return aggregate_seperated_store_files()
+    # Otherwise we grab the aggregated data and return it
+    # as a data frame
+    else:
+        return csv_to_df(AGGREGATED_STORE_FILE)
+
 
 def aggregate_seperated_store_files():
     # Get a reference to all csv files in the store-data
