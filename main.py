@@ -6,7 +6,8 @@ import pandas as pd
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
 
 def main():
-    print("hello world")
+    store_df = read_store_data()
+    print(store_df)
 
 def read_store_data():
     # Checks for aggregated first, if not found,
