@@ -6,10 +6,10 @@ import pandas as pd
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
 
 def main():
-    store_df = read_store_data()
-    print(store_df)
+    stores_df = read_store_data()
+    print(stores_df)
 
-def read_store_data():
+def read_store_data() -> pd.DataFrame:
     # Checks for aggregated first, if not found,
     # then aggregated will be generated and returned
     if not path.isfile(AGGREGATED_STORE_FILE):
@@ -20,7 +20,7 @@ def read_store_data():
         return csv_to_df(AGGREGATED_STORE_FILE)
 
 
-def aggregate_seperated_store_files():
+def aggregate_seperated_store_files() -> pd.DataFrame:
     # Get a reference to all csv files in the store-data
     # folder that have a .csv file extension (stores them)
     # in a list
@@ -31,16 +31,16 @@ def aggregate_seperated_store_files():
     seperated_store_dfs = list(map(csv_to_df, store_csvs))
 
     # Concats each individual df into a single large one
-    store_df = pd.concat(seperated_store_dfs)
+    stores_df = pd.concat(seperated_store_dfs)
 
     # Save to file so that this computation does not have
     # to run every time
-    store_df.to_csv(AGGREGATED_STORE_FILE)
+    stores_df.to_csv(AGGREGATED_STORE_FILE)
 
-    return store_df
+    return stores_df
 
 # Assumes , as delimiter by default
-def csv_to_df(file_name, delimiter=","):
+def csv_to_df(file_name: str, delimiter: str =",") -> None:
     return pd.read_csv(file_name, sep=delimiter)
 
 main()
