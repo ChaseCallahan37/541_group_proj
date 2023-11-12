@@ -4,10 +4,12 @@ import pandas as pd
 
 # GLOBAL CONSTANTS
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
+HOUSING_PRICES_FILE = "./housing-data/fulton_county_data.csv"
+
 
 def main():
     stores_df = read_store_data()
-    print(stores_df)
+    housing_df = read_housing_data()
 
 def read_store_data() -> pd.DataFrame:
     # Checks for aggregated first, if not found,
@@ -38,6 +40,9 @@ def aggregate_seperated_store_files() -> pd.DataFrame:
     stores_df.to_csv(AGGREGATED_STORE_FILE)
 
     return stores_df
+
+def read_housing_data() -> pd.DataFrame:
+    return csv_to_df(HOUSING_PRICES_FILE)
 
 # Assumes , as delimiter by default
 def csv_to_df(file_name: str, delimiter: str =",") -> None:
