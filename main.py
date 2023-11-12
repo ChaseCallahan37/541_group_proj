@@ -11,7 +11,13 @@ def main():
     stores_df = read_store_data()
     housing_df = read_housing_data()
 
+    print(stores_df)
+
 def read_store_data() -> pd.DataFrame:
+    all_store_data = retrieve_store_file()
+    return all_store_data[all_store_data["state_alpha"] == "GA"]
+    
+def retrieve_store_file() -> pd.DataFrame:
     # Checks for aggregated first, if not found,
     # then aggregated will be generated and returned
     if not path.isfile(AGGREGATED_STORE_FILE):
@@ -20,7 +26,6 @@ def read_store_data() -> pd.DataFrame:
     # as a data frame
     else:
         return csv_to_df(AGGREGATED_STORE_FILE)
-
 
 def aggregate_seperated_store_files() -> pd.DataFrame:
     # Get a reference to all csv files in the store-data
