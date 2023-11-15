@@ -31,7 +31,11 @@ def aggregate_seperated_store_files() -> pd.DataFrame:
     # Get a reference to all csv files in the store-data
     # folder that have a .csv file extension (stores them)
     # in a list
+    
     store_csvs = glob("store-data/*.csv")
+
+    if len(store_csvs) < 1:
+        store_csvs = pull_down_store_csvs()
 
     # Takes each file reference and converts them to a data
     # frame. Final result is a list of data frames
@@ -52,5 +56,11 @@ def read_housing_data() -> pd.DataFrame:
 # Assumes , as delimiter by default
 def csv_to_df(file_name: str, delimiter: str =",") -> None:
     return pd.read_csv(file_name, sep=delimiter)
+
+
+def pull_down_store_csvs():
+    #TODO: write code to pull down all store csvs from github here
+    
+    return glob("store-data/*.csv")
 
 main()
