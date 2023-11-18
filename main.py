@@ -50,6 +50,8 @@ def aggregate_seperated_store_files() -> pd.DataFrame:
 
 def read_housing_data() -> pd.DataFrame:
     housing_df = csv_to_df(HOUSING_PRICES_FILE)
+    # We convert all zips from float to int then string, at that point we make the string 5 long by adding 0s to the start
+    # If the zip code is NaN then we maintain the NaN designation
     housing_df["zip_code"] = housing_df["zip_code"].apply(lambda x: str(int(x)).zfill(5) if not pd.isnull(x) else np.nan)
     return housing_df
 
