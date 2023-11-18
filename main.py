@@ -12,12 +12,12 @@ def main():
     stores_df = read_store_data()
     housing_df = read_housing_data()
 
-    print(stores_df)
-    print(housing_df)
+    print(stores_df.info())
+    print(housing_df.info())
 
 def read_store_data() -> pd.DataFrame:
-    all_store_data = retrieve_store_file()
-    return all_store_data[all_store_data["state_alpha"] == "GA"]
+    stores_df = retrieve_store_file()
+    return stores_df
     
 def retrieve_store_file() -> pd.DataFrame:
     # Checks for aggregated first, if not found,
