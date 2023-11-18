@@ -1,6 +1,7 @@
 from glob import glob
 import os.path as path
 import pandas as pd
+import numpy as np
 
 # GLOBAL CONSTANTS
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
@@ -48,10 +49,12 @@ def aggregate_seperated_store_files() -> pd.DataFrame:
     return stores_df
 
 def read_housing_data() -> pd.DataFrame:
-    return csv_to_df(HOUSING_PRICES_FILE)
+    housing_df = csv_to_df(HOUSING_PRICES_FILE)
+    housing_df["zip_code"] = housing_df["zip_code"].apply(lambda x: str(int(x)).zfill(5) if not pd.isnull(x) else np.nan)
+    return housing_df
 
 # Assumes , as delimiter by default
-def csv_to_df(file_name: str, delimiter: str =",") -> None:
+def csv_to_df(file_name: str, delimiter: str =",") -> pd.DataFrame:
     return pd.read_csv(file_name, sep=delimiter)
 
 main()
