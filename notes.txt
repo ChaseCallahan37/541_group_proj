@@ -1,0 +1,5 @@
+https://www.unitedstateszipcodes.org/zip-code-database/
+where I got the zip codes
+
+site where I a going to do webscraping
+https://www.unitedstateszipcodes.org/

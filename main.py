@@ -6,14 +6,19 @@ import numpy as np
 # GLOBAL CONSTANTS
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
 HOUSING_PRICES_FILE = "./housing-data/realtor-data.csv"
+POSTAL_SITE_URL = "https://www.unitedstateszipcodes.org/"
 
 
 def main():
     stores_df = read_store_data()
     housing_df = read_housing_data()
 
-    print(stores_df.info())
-    print(housing_df.info())
+    store_by_zip = stores_df.groupby(["postal_code"])
+    print(store_by_zip)
+
+    house_by_zip = housing_df.groupby(["zip_code"])["price"].mean()
+    print(house_by_zip)
+    print(len(house_by_zip))
 
 def read_store_data() -> pd.DataFrame:
     stores_df = retrieve_store_file()
@@ -54,6 +59,12 @@ def read_housing_data() -> pd.DataFrame:
     # If the zip code is NaN then we maintain the NaN designation
     housing_df["zip_code"] = housing_df["zip_code"].apply(lambda x: str(int(x)).zfill(5) if not pd.isnull(x) else np.nan)
     return housing_df
+
+def read_postal_codes():
+    pass
+
+def scrape_postal_site(zip_codes):
+    pass
 
 # Assumes , as delimiter by default
 def csv_to_df(file_name: str, delimiter: str =",") -> pd.DataFrame:
