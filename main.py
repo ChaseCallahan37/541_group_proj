@@ -6,6 +6,8 @@ import pandas as pd
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
 HOUSING_PRICES_FILE = "./housing-data/fulton_county_data.csv"
 REALTOR_FILE = "realtor_data.csv"
+REALTOR_RAW_URL = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/housing-data/realtor-data.csv"
+AGGREGATED_STORE_RAW_URL = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/store-data-aggregate.csv"
 
 
 def main():
@@ -18,6 +20,16 @@ def main():
 def read_store_data() -> pd.DataFrame:
     all_store_data = retrieve_store_file()
     return all_store_data
+
+def retrieve_realtor_file() -> pd.DataFrame:
+    # Checks for aggregated first, if not found,
+    # then aggregated will be generated and returned
+    if not path.isfile(REALTOR_FILE):
+        return read_housing_data()
+    # Otherwise we grab the aggregated data and return it
+    # as a data frame
+    else:
+        return csv_to_df(REALTOR_FILE)
     
 def retrieve_store_file() -> pd.DataFrame:
     # Checks for aggregated first, if not found,
@@ -50,7 +62,7 @@ def aggregate_seperated_store_files() -> pd.DataFrame:
     return stores_df
 
 def read_housing_data() -> pd.DataFrame:
-    url = 'https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/housing-data/realtor-data.csv'
+    url = REALTOR_RAW_URL
     df = pd.read_csv(url)
     df.to_csv(REALTOR_FILE)
     return df
@@ -61,9 +73,12 @@ def csv_to_df(file_name: str, delimiter: str =",") -> None:
 
 
 def pull_down_store_csv():
-    url = 'https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/store-data-aggregate.csv'
+    url = AGGREGATED_STORE_RAW_URL
     df = pd.read_csv(url)
+
+    # Removing Store indexes that are nonunique
     df.drop(['Unnamed: 0'], axis=1, inplace=True)
+
     df.to_csv(AGGREGATED_STORE_FILE)
     return df
 
