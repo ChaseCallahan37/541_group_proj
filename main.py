@@ -4,7 +4,7 @@ import pandas as pd
 
 # GLOBAL CONSTANTS
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
-HOUSING_PRICES_FILE = "./housing-data/fulton_county_data.csv"
+HOUSING_PRICES_FILE = "./housing-data/realtor-data.csv"
 
 
 def main():
@@ -12,6 +12,7 @@ def main():
     housing_df = read_housing_data()
 
     print(stores_df)
+    print(housing_df)
 
 def read_store_data() -> pd.DataFrame:
     all_store_data = retrieve_store_file()
