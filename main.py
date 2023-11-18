@@ -5,23 +5,37 @@ import pandas as pd
 # GLOBAL CONSTANTS
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
 HOUSING_PRICES_FILE = "./housing-data/fulton_county_data.csv"
+REALTOR_FILE = "realtor_data.csv"
+REALTOR_RAW_URL = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/housing-data/realtor-data.csv"
+AGGREGATED_STORE_RAW_URL = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/store-data-aggregate.csv"
 
 
 def main():
     stores_df = read_store_data()
     housing_df = read_housing_data()
 
-    print(stores_df)
+    print(stores_df.head())
+    print(housing_df.head())
 
 def read_store_data() -> pd.DataFrame:
     all_store_data = retrieve_store_file()
-    return all_store_data[all_store_data["state_alpha"] == "GA"]
+    return all_store_data
+
+def retrieve_realtor_file() -> pd.DataFrame:
+    # Checks for aggregated first, if not found,
+    # then aggregated will be generated and returned
+    if not path.isfile(REALTOR_FILE):
+        return read_housing_data()
+    # Otherwise we grab the aggregated data and return it
+    # as a data frame
+    else:
+        return csv_to_df(REALTOR_FILE)
     
 def retrieve_store_file() -> pd.DataFrame:
     # Checks for aggregated first, if not found,
     # then aggregated will be generated and returned
     if not path.isfile(AGGREGATED_STORE_FILE):
-        return aggregate_seperated_store_files()
+        return pull_down_store_csv()
     # Otherwise we grab the aggregated data and return it
     # as a data frame
     else:
@@ -33,9 +47,6 @@ def aggregate_seperated_store_files() -> pd.DataFrame:
     # in a list
     
     store_csvs = glob("store-data/*.csv")
-
-    if len(store_csvs) < 1:
-        store_csvs = pull_down_store_csvs()
 
     # Takes each file reference and converts them to a data
     # frame. Final result is a list of data frames
@@ -51,16 +62,24 @@ def aggregate_seperated_store_files() -> pd.DataFrame:
     return stores_df
 
 def read_housing_data() -> pd.DataFrame:
-    return csv_to_df(HOUSING_PRICES_FILE)
+    url = REALTOR_RAW_URL
+    df = pd.read_csv(url)
+    df.to_csv(REALTOR_FILE)
+    return df
 
 # Assumes , as delimiter by default
 def csv_to_df(file_name: str, delimiter: str =",") -> None:
     return pd.read_csv(file_name, sep=delimiter)
 
 
-def pull_down_store_csvs():
-    #TODO: write code to pull down all store csvs from github here
-    
-    return glob("store-data/*.csv")
+def pull_down_store_csv():
+    url = AGGREGATED_STORE_RAW_URL
+    df = pd.read_csv(url)
+
+    # Removing Store indexes that are nonunique
+    df.drop(['Unnamed: 0'], axis=1, inplace=True)
+
+    df.to_csv(AGGREGATED_STORE_FILE)
+    return df
 
 main()
