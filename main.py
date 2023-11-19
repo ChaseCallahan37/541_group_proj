@@ -11,7 +11,7 @@ AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
 AGGREGATED_STORE_RAW_URL = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/store-data-aggregate.csv"
 
 REALTOR_FILE = "./housing-data/realtor-data.csv"
-RAW_REALTOR_FILE = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/housing-data/realtor-data.csv"
+RAW_REALTOR_FILE = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/realtor-data/realtor-data.csv"
 
 RAW_COUNTIES_FILE = "./counties-data/raw-counties.csv"
 COUNTIES_FILE = "./counties-data/counties.csv"
@@ -112,7 +112,7 @@ def read_housing_file() -> pd.DataFrame:
         pulled_housing_data = pd.read_csv(RAW_REALTOR_FILE)
         pulled_housing_data.to_csv(path_or_buf="./housing-data/realtor-data.csv")
         return pulled_housing_data
-    return pd.read_csv((REALTOR_FILE))
+    return pd.read_csv(REALTOR_FILE)
 
 # Assumes , as delimiter by default
 def csv_to_df(file_name: str, delimiter: str =",") -> pd.DataFrame:
