@@ -2,11 +2,14 @@ from glob import glob
 import os.path as path
 import pandas as pd
 import numpy as np
+from bs4 import BeautifulSoup
+import requests
 
 # GLOBAL CONSTANTS
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
 HOUSING_PRICES_FILE = "./housing-data/realtor-data.csv"
-POSTAL_SITE_URL = "https://www.unitedstateszipcodes.org/"
+def POSTAL_SITE_URL(zip_code): return f"https://www.unitedstateszipcodes.org/{zip_code}"
+ZIP_CODES_FILE = "zip_code_database.csv"
 
 
 def main():
@@ -19,6 +22,9 @@ def main():
     house_by_zip = housing_df.groupby(["zip_code"])["price"].mean()
     print(house_by_zip)
     print(len(house_by_zip))
+
+    zips = read_postal_codes()
+    scrape_postal_site(zips)
 
 def read_store_data() -> pd.DataFrame:
     stores_df = retrieve_store_file()
@@ -61,10 +67,18 @@ def read_housing_data() -> pd.DataFrame:
     return housing_df
 
 def read_postal_codes():
-    pass
+    zip_code_df = csv_to_df(ZIP_CODES_FILE)
+    return list(zip_code_df["zip"])
 
 def scrape_postal_site(zip_codes):
-    pass
+    zip_prices = {}
+    for zip_code in zip_codes:
+        url = POSTAL_SITE_URL(zip_code)
+        source_file = requests.get(url)
+        soup = BeautifulSoup(source_file, "html.parser")
+        elm = soup.find_parent("\Median Home Value").text
+        print(elm)
+      
 
 # Assumes , as delimiter by default
 def csv_to_df(file_name: str, delimiter: str =",") -> pd.DataFrame:
