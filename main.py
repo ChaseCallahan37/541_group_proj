@@ -9,8 +9,9 @@ import re
 # GLOBAL CONSTANTS
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
 HOUSING_PRICES_FILE = "./housing-data/realtor-data.csv"
-def POSTAL_SITE_URL(zip_code): return f"https://www.unitedstateszipcodes.org/{zip_code}"
-ZIP_CODES_FILE = "zip_code_database.csv"
+COUNTIES_FILE = "./counties-data/counties.csv"
+RAW_COUNTIES_FILE = "./counties-data/raw-counties.csv"
+ZIP_CODES_FILE = "./zip-code-data/zip_code_database.csv"
 
 
 def main():
@@ -19,12 +20,21 @@ def main():
     zip_codes_df = read_zip_data()
     county_df = read_county_data()
 
-    store_by_zip = stores_df.groupby(["postal_code"])
-    print(store_by_zip)
+    # If stores are not already populated with county, then do so and save it
+    if not "county" in stores_df.columns:
+        stores_df["county"] = stores_df["postal_code"].apply(lambda x: locate_county(zip_codes_df, x))
+        stores_df.to_csv(path_or_buf=AGGREGATED_STORE_FILE)
 
-    house_by_zip = housing_df.groupby(["zip_code"])["price"].mean()
-    print(house_by_zip)
-    print(len(house_by_zip))
+
+def locate_county(zip_codes_df, zip):
+    try:
+        first_section = zip.split(" ")[0]
+        zip_int = int(first_section)
+        return zip_codes_df.loc[zip_int]["county"]
+    except:
+        return np.NaN
+    
+
 
 def read_store_data() -> pd.DataFrame:
     stores_df = retrieve_store_file()
@@ -68,18 +78,25 @@ def read_housing_data() -> pd.DataFrame:
 
 def read_zip_data() -> pd.DataFrame:
     zip_code_df = pd.read_csv(ZIP_CODES_FILE)
+    zip_code_df = zip_code_df.set_index(["zip"])
+    zip_code_df["county"] = zip_code_df["county"].apply(lambda x: re.sub("County", "", x).strip() if pd.notnull(x) else np.NaN)
     return zip_code_df
 
 def read_county_data() -> pd.DataFrame:
-    county_df = pd.read_csv
+    county_df = read_county_file()
+    return county_df
+
+def read_county_file() -> pd.DataFrame:
+    if path.isfile(COUNTIES_FILE):
+        return pd.read_csv(COUNTIES_FILE)
+    return prepare_counties_data(RAW_COUNTIES_FILE)
 
 # Assumes , as delimiter by default
 def csv_to_df(file_name: str, delimiter: str =",") -> pd.DataFrame:
     return pd.read_csv(file_name, sep=delimiter)
 
-
-def prepare_counties_data() -> pd.DataFrame:
-    counties_file = open("counties.csv")
+def prepare_counties_data(file_name: str) -> pd.DataFrame:
+    counties_file = open(file_name)
     counties = []
     for line in counties_file:
         county_data = {}
@@ -93,7 +110,9 @@ def prepare_counties_data() -> pd.DataFrame:
         county_data["median"] = int(median)
 
         counties.append(county_data)
-    return pd.DataFrame(counties)
+    df = pd.DataFrame(counties)
+    df.to_csv(path_or_buf=COUNTIES_FILE)
+    return df
 
-counties = prepare_counties_data()
-print(counties)
+
+main()
