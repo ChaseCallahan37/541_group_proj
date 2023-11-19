@@ -99,20 +99,31 @@ def prepare_counties_data(file_name: str) -> pd.DataFrame:
     counties_file = open(file_name)
     counties = []
     for line in counties_file:
-        county_data = {}
+        county = {}
         line = line.split(",")
-        county_raw = line[0]
-        county_data["county"] = re.sub("County", "", county_raw).strip()
 
-        rest = "".join(line[1:])
-        median = rest.split("$")[1].strip()
+        try: 
+            # Clean the county name by taking out the word 'County'
+            county["county"] = re.sub("County", "", line[0]).strip()
+        except:
+            county["county"] = np.Nan
+
+        try:
+            # Join th rest of the data together to split on a '$' instead
+            stringy_median = "".join(line[1:]).split("$")[1].strip()
+            county["median"] = int(stringy_median)
+        except:
+            county["median"] = np.NaN
         
-        county_data["median"] = int(median)
+        counties.append(county)
 
-        counties.append(county_data)
-    df = pd.DataFrame(counties)
-    df.to_csv(path_or_buf=COUNTIES_FILE)
-    return df
+    counties_df = pd.DataFrame(counties)
+
+    # Save counties data to file so that this operation only
+    # needs to be run to generate files
+    counties_df.to_csv(path_or_buf=COUNTIES_FILE)
+    
+    return counties_df
 
 
 main()
