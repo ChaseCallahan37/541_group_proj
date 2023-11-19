@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from bs4 import BeautifulSoup
 import requests
+import re
 
 # GLOBAL CONSTANTS
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
@@ -15,6 +16,8 @@ ZIP_CODES_FILE = "zip_code_database.csv"
 def main():
     stores_df = read_store_data()
     housing_df = read_housing_data()
+    zip_codes_df = read_zip_data()
+    county_df = read_county_data()
 
     store_by_zip = stores_df.groupby(["postal_code"])
     print(store_by_zip)
@@ -22,9 +25,6 @@ def main():
     house_by_zip = housing_df.groupby(["zip_code"])["price"].mean()
     print(house_by_zip)
     print(len(house_by_zip))
-
-    zips = read_postal_codes()
-    scrape_postal_site(zips)
 
 def read_store_data() -> pd.DataFrame:
     stores_df = retrieve_store_file()
@@ -66,22 +66,34 @@ def read_housing_data() -> pd.DataFrame:
     housing_df["zip_code"] = housing_df["zip_code"].apply(lambda x: str(int(x)).zfill(5) if not pd.isnull(x) else np.nan)
     return housing_df
 
-def read_postal_codes():
-    zip_code_df = csv_to_df(ZIP_CODES_FILE)
-    return list(zip_code_df["zip"])
+def read_zip_data() -> pd.DataFrame:
+    zip_code_df = pd.read_csv(ZIP_CODES_FILE)
+    return zip_code_df
 
-def scrape_postal_site(zip_codes):
-    zip_prices = {}
-    for zip_code in zip_codes:
-        url = POSTAL_SITE_URL(zip_code)
-        source_file = requests.get(url)
-        soup = BeautifulSoup(source_file, "html.parser")
-        elm = soup.find_parent("\Median Home Value").text
-        print(elm)
-      
+def read_county_data() -> pd.DataFrame:
+    county_df = pd.read_csv
 
 # Assumes , as delimiter by default
 def csv_to_df(file_name: str, delimiter: str =",") -> pd.DataFrame:
     return pd.read_csv(file_name, sep=delimiter)
 
-main()
+
+def prepare_counties_data() -> pd.DataFrame:
+    counties_file = open("counties.csv")
+    counties = []
+    for line in counties_file:
+        county_data = {}
+        line = line.split(",")
+        county_raw = line[0]
+        county_data["county"] = re.sub("County", "", county_raw).strip()
+
+        rest = "".join(line[1:])
+        median = rest.split("$")[1].strip()
+        
+        county_data["median"] = int(median)
+
+        counties.append(county_data)
+    return pd.DataFrame(counties)
+
+counties = prepare_counties_data()
+print(counties)
