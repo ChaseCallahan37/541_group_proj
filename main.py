@@ -77,7 +77,9 @@ def scrape_postal_site(zip_codes):
 
 def read_housing_file() -> pd.DataFrame:
     if not path.isfile(HOUSING_PRICES_FILE):
-        return pd.read_csv(REALTOR_RAW_URL)
+        pulled_housing_data = pd.read_csv(REALTOR_RAW_URL)
+        pulled_housing_data.to_csv(path_or_buf="./housing-data/realtor-data.csv")
+        return pulled_housing_data
     return pd.read_csv((HOUSING_PRICES_FILE))
 
 # Assumes , as delimiter by default
