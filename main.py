@@ -8,9 +8,14 @@ import re
 
 # GLOBAL CONSTANTS
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
-HOUSING_PRICES_FILE = "./housing-data/realtor-data.csv"
-COUNTIES_FILE = "./counties-data/counties.csv"
+AGGREGATED_STORE_RAW_URL = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/store-data-aggregate.csv"
+
+REALTOR_FILE = "./housing-data/realtor-data.csv"
+RAW_REALTOR_FILE = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/housing-data/realtor-data.csv"
+
 RAW_COUNTIES_FILE = "./counties-data/raw-counties.csv"
+COUNTIES_FILE = "./counties-data/counties.csv"
+
 ZIP_CODES_FILE = "./zip-code-data/zip_code_database.csv"
 
 
@@ -37,14 +42,24 @@ def locate_county(zip_codes_df, zip):
 
 
 def read_store_data() -> pd.DataFrame:
-    stores_df = retrieve_store_file()
-    return stores_df
+    all_store_data = retrieve_store_file()
+    return all_store_data
+
+def retrieve_realtor_file() -> pd.DataFrame:
+    # Checks for aggregated first, if not found,
+    # then aggregated will be generated and returned
+    if not path.isfile(REALTOR_FILE):
+        return read_housing_data()
+    # Otherwise we grab the aggregated data and return it
+    # as a data frame
+    else:
+        return csv_to_df(REALTOR_FILE)
     
 def retrieve_store_file() -> pd.DataFrame:
     # Checks for aggregated first, if not found,
     # then aggregated will be generated and returned
     if not path.isfile(AGGREGATED_STORE_FILE):
-        return aggregate_seperated_store_files()
+        return pull_down_store_csv()
     # Otherwise we grab the aggregated data and return it
     # as a data frame
     else:
@@ -54,6 +69,7 @@ def aggregate_seperated_store_files() -> pd.DataFrame:
     # Get a reference to all csv files in the store-data
     # folder that have a .csv file extension (stores them)
     # in a list
+    
     store_csvs = glob("store-data/*.csv")
 
     # Takes each file reference and converts them to a data
@@ -70,7 +86,7 @@ def aggregate_seperated_store_files() -> pd.DataFrame:
     return stores_df
 
 def read_housing_data() -> pd.DataFrame:
-    housing_df = csv_to_df(HOUSING_PRICES_FILE)
+    housing_df = read_housing_file()
     # We convert all zips from float to int then string, at that point we make the string 5 long by adding 0s to the start
     # If the zip code is NaN then we maintain the NaN designation
     housing_df["zip_code"] = housing_df["zip_code"].apply(lambda x: str(int(x)).zfill(5) if not pd.isnull(x) else np.nan)
@@ -90,6 +106,13 @@ def read_county_file() -> pd.DataFrame:
     if path.isfile(COUNTIES_FILE):
         return pd.read_csv(COUNTIES_FILE)
     return prepare_counties_data(RAW_COUNTIES_FILE)
+
+def read_housing_file() -> pd.DataFrame:
+    if not path.isfile(REALTOR_FILE):
+        pulled_housing_data = pd.read_csv(RAW_REALTOR_FILE)
+        pulled_housing_data.to_csv(path_or_buf="./housing-data/realtor-data.csv")
+        return pulled_housing_data
+    return pd.read_csv((REALTOR_FILE))
 
 # Assumes , as delimiter by default
 def csv_to_df(file_name: str, delimiter: str =",") -> pd.DataFrame:
@@ -125,5 +148,15 @@ def prepare_counties_data(file_name: str) -> pd.DataFrame:
     
     return counties_df
 
+
+def pull_down_store_csv():
+    url = AGGREGATED_STORE_RAW_URL
+    df = pd.read_csv(url)
+
+    # Removing Store indexes that are nonunique
+    df.drop(['Unnamed: 0'], axis=1, inplace=True)
+
+    df.to_csv(AGGREGATED_STORE_FILE)
+    return df
 
 main()
