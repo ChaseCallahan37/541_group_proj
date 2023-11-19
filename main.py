@@ -1,10 +1,11 @@
 from glob import glob
 import os.path as path
 import pandas as pd
+import numpy as np
 
 # GLOBAL CONSTANTS
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
-HOUSING_PRICES_FILE = "./housing-data/fulton_county_data.csv"
+HOUSING_PRICES_FILE = "./housing-data/realtor-data.csv"
 REALTOR_FILE = "realtor_data.csv"
 REALTOR_RAW_URL = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/housing-data/realtor-data.csv"
 AGGREGATED_STORE_RAW_URL = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/store-data-aggregate.csv"
@@ -62,13 +63,27 @@ def aggregate_seperated_store_files() -> pd.DataFrame:
     return stores_df
 
 def read_housing_data() -> pd.DataFrame:
-    url = REALTOR_RAW_URL
-    df = pd.read_csv(url)
-    df.to_csv(REALTOR_FILE)
-    return df
+    housing_df = read_housing_file()
+    # We convert all zips from float to int then string, at that point we make the string 5 long by adding 0s to the start
+    # If the zip code is NaN then we maintain the NaN designation
+    housing_df["zip_code"] = housing_df["zip_code"].apply(lambda x: str(int(x)).zfill(5) if not pd.isnull(x) else np.nan)
+    return housing_df
+
+def read_postal_codes():
+    pass
+
+def scrape_postal_site(zip_codes):
+    pass
+
+def read_housing_file() -> pd.DataFrame:
+    if not path.isfile(HOUSING_PRICES_FILE):
+        pulled_housing_data = pd.read_csv(REALTOR_RAW_URL)
+        pulled_housing_data.to_csv(path_or_buf="./housing-data/realtor-data.csv")
+        return pulled_housing_data
+    return pd.read_csv((HOUSING_PRICES_FILE))
 
 # Assumes , as delimiter by default
-def csv_to_df(file_name: str, delimiter: str =",") -> None:
+def csv_to_df(file_name: str, delimiter: str =",") -> pd.DataFrame:
     return pd.read_csv(file_name, sep=delimiter)
 
 
