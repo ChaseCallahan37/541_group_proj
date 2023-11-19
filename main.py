@@ -10,7 +10,7 @@ import re
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
 AGGREGATED_STORE_RAW_URL = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/store-data-aggregate.csv"
 
-REALTOR_FILE = "./housing-data/realtor-data.csv"
+REALTOR_FILE = "./realtor-data/realtor-data.csv"
 RAW_REALTOR_FILE = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/realtor-data/realtor-data.csv"
 
 RAW_COUNTIES_FILE = "./counties-data/raw-counties.csv"
@@ -29,6 +29,9 @@ def main():
     if not "county" in stores_df.columns:
         stores_df["county"] = stores_df["postal_code"].apply(lambda x: locate_county(zip_codes_df, x))
         stores_df.to_csv(path_or_buf=AGGREGATED_STORE_FILE)
+
+    print(stores_df.groupby(["county"]).value_counts())
+    print("end main")
 
 
 def locate_county(zip_codes_df, zip):
