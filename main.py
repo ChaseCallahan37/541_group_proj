@@ -59,19 +59,35 @@ def main():
         new_names[name] = re.sub("[^A-Za-z]", "_", name.strip())
     stores_pivot.rename(columns=new_names, inplace=True)
 
+    # CORRELATION COEFFICIENTS
+    median_cor = stores_pivot.corr(numeric_only=True)["median"].abs().sort_values(ascending=True)
+    print(f"\n\n{Colors.CYAN}CORRELATION COEFICIENTS{Colors.RESET}\n")
+    print(median_cor)
+    # company_corr_df = median_cor.to_frame().reset_index().set_index("company_name").rename(columns={"median": "correlation_coefficient"})
+    company_corr_df = median_cor.to_frame().reset_index().rename(columns={"median": "correlation_coefficient"})
+    company_corr_df = company_corr_df[company_corr_df["company_name"] != "median"]
+    print(company_corr_df)
+    
+    print(company_corr_df["company_name"])
+    plt.bar(x=company_corr_df["company_name"], height=company_corr_df["correlation_coefficient"])
+    plt.title("Company Count Correlation to Median Home Price")
+    plt.xlabel("Companies")
+    plt.xticks(rotation=60)
+    plt.ylabel("Correlation Coefficient")
+    plt.yticks(np.arange(0, 1.05, .05))
+    plt.show()
+
+    # OLS ANALYSIS
+
     # Join all the column names together via a space (except for the dependent)
     # variable, so that they may be interpolated into the formula
     dependent = "median"
-    factors = " + ".join(filter(lambda x: x != dependent, stores_pivot.columns))
+    factors = " + ".join(filter(lambda x: (x != dependent), stores_pivot.columns))
     ols_model = ols(formula=f"{dependent} ~ {factors}", data=stores_pivot).fit()
 
     print(f"\n\n{Colors.CYAN}OLS MODEL SUMMARY{Colors.RESET}\n")
     print(ols_model.summary())
 
-
-    median_cor = stores_pivot.corr(numeric_only=True)["median"].abs().sort_values(ascending=False)
-    print(f"\n\n{Colors.CYAN}CORRELATION COEFICIENTS{Colors.RESET}\n")
-    print(median_cor)
 
 
 # Recieves the dataset with the counties information regarding median
