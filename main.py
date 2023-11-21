@@ -23,6 +23,15 @@ COUNTIES_FILE = "./counties-data/counties.csv"
 
 ZIP_CODES_FILE = "./zip-code-data/zip_code_database.csv"
 
+class Colors:
+    RED = '\033[91m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    MAGENTA = '\033[95m'
+    CYAN = '\033[96m'
+    RESET = '\033[0m'  # Reset color to default
+
 
 def main():
     stores_df = read_store_data()
@@ -41,6 +50,7 @@ def main():
     stores_pivot["median"] = stores_pivot.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
     stores_pivot = stores_pivot[stores_pivot["median"].notna()]
 
+    print(f"\n\n{Colors.CYAN}STRUCTURED STORE DATA WITH COUNTY{Colors.RESET}\n")
     print(stores_pivot)
 
     # Replace the column names with names that do not use spaces
@@ -55,7 +65,13 @@ def main():
     factors = " + ".join(filter(lambda x: x != dependent, stores_pivot.columns))
     ols_model = ols(formula=f"{dependent} ~ {factors}", data=stores_pivot).fit()
 
+    print(f"\n\n{Colors.CYAN}OLS MODEL SUMMARY{Colors.RESET}\n")
     print(ols_model.summary())
+
+
+    median_cor = stores_pivot.corr(numeric_only=True)["median"].abs().sort_values(ascending=False)
+    print(f"\n\n{Colors.CYAN}CORRELATION COEFICIENTS{Colors.RESET}\n")
+    print(median_cor)
 
 
 # Recieves the dataset with the counties information regarding median
