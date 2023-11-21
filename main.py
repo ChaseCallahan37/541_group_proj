@@ -6,8 +6,10 @@ from bs4 import BeautifulSoup
 import requests
 import re
 import matplotlib.pyplot as plt
+from statsmodels.formula.api import ols 
 
-pd.set_option('display.max_rows', None)
+
+# pd.set_option('display.max_rows', None)
 
 # GLOBAL CONSTANTS
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
@@ -44,15 +46,21 @@ def main():
 
     print(stores_pivot)
 
-
+# Recieves the dataset with the counties information regarding median
+# home prices and the specific county that we are looking for
 def get_county_median(counties_df: pd.DataFrame, county: str) :
     try:
+        # Attempt to locate the county within the dataset
         median = counties_df.loc[county]["median"]
+        # If multiple counties with same name exist
+        # Then return nan
         if isinstance(median, pd.Series):
             return np.NaN
 
         return median
     except:
+        # If any failures occur, default to
+        # nan
         return np.NaN
     
 def locate_county(zip_codes_df, zip):
