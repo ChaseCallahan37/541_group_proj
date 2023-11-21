@@ -36,15 +36,27 @@ def main():
         stores_df.to_csv(path_or_buf=AGGREGATED_STORE_FILE)
 
     stores_per_county = stores_df.groupby(["county","company_name"])[["county", "company_name"]].value_counts().to_frame().reset_index()
-    # stores_per_county["median"] = stores_per_county["county"].apply(lambda x: get_county_median(counties_df, x))
-  
+
     stores_pivot = stores_per_county.pivot_table(index="county", columns="company_name", values="count", fill_value=0)
-
     stores_pivot["median"] = stores_pivot.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
-
     stores_pivot = stores_pivot[stores_pivot["median"].notna()]
 
     print(stores_pivot)
+
+    # Replace the column names with names that do not use spaces
+    new_names = {}
+    for name in stores_pivot.columns:
+        new_names[name] = re.sub("[^A-Za-z]", "_", name.strip())
+    stores_pivot.rename(columns=new_names, inplace=True)
+
+    # Join all the column names together via a space (except for the dependent)
+    # variable, so that they may be interpolated into the formula
+    dependent = "median"
+    factors = " + ".join(filter(lambda x: x != dependent, stores_pivot.columns))
+    ols_model = ols(formula=f"{dependent} ~ {factors}", data=stores_pivot).fit()
+
+    print(ols_model.summary())
+
 
 # Recieves the dataset with the counties information regarding median
 # home prices and the specific county that we are looking for
