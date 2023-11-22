@@ -2,21 +2,47 @@ from glob import glob
 import os.path as path
 import pandas as pd
 import numpy as np
+from bs4 import BeautifulSoup
+import requests
+import re
 
 # GLOBAL CONSTANTS
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
-HOUSING_PRICES_FILE = "./housing-data/realtor-data.csv"
-REALTOR_FILE = "realtor_data.csv"
-REALTOR_RAW_URL = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/housing-data/realtor-data.csv"
 AGGREGATED_STORE_RAW_URL = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/store-data-aggregate.csv"
+
+REALTOR_FILE = "./realtor-data/realtor-data.csv"
+RAW_REALTOR_FILE = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/realtor-data/realtor-data.csv"
+
+RAW_COUNTIES_FILE = "./counties-data/raw-counties.csv"
+COUNTIES_FILE = "./counties-data/counties.csv"
+
+ZIP_CODES_FILE = "./zip-code-data/zip_code_database.csv"
 
 
 def main():
     stores_df = read_store_data()
     housing_df = read_housing_data()
+    zip_codes_df = read_zip_data()
+    county_df = read_county_data()
 
-    print(stores_df.head())
-    print(housing_df.head())
+    # If stores are not already populated with county, then do so and save it
+    if not "county" in stores_df.columns:
+        stores_df["county"] = stores_df["postal_code"].apply(lambda x: locate_county(zip_codes_df, x))
+        stores_df.to_csv(path_or_buf=AGGREGATED_STORE_FILE)
+
+    print(stores_df.groupby(["county"]).value_counts())
+    print("end main")
+
+
+def locate_county(zip_codes_df, zip):
+    try:
+        first_section = zip.split(" ")[0]
+        zip_int = int(first_section)
+        return zip_codes_df.loc[zip_int]["county"]
+    except:
+        return np.NaN
+    
+
 
 def read_store_data() -> pd.DataFrame:
     all_store_data = retrieve_store_file()
@@ -69,22 +95,61 @@ def read_housing_data() -> pd.DataFrame:
     housing_df["zip_code"] = housing_df["zip_code"].apply(lambda x: str(int(x)).zfill(5) if not pd.isnull(x) else np.nan)
     return housing_df
 
-def read_postal_codes():
-    pass
+def read_zip_data() -> pd.DataFrame:
+    zip_code_df = pd.read_csv(ZIP_CODES_FILE)
+    zip_code_df = zip_code_df.set_index(["zip"])
+    zip_code_df["county"] = zip_code_df["county"].apply(lambda x: re.sub("County", "", x).strip() if pd.notnull(x) else np.NaN)
+    return zip_code_df
 
-def scrape_postal_site(zip_codes):
-    pass
+def read_county_data() -> pd.DataFrame:
+    county_df = read_county_file()
+    return county_df
+
+def read_county_file() -> pd.DataFrame:
+    if path.isfile(COUNTIES_FILE):
+        return pd.read_csv(COUNTIES_FILE)
+    return prepare_counties_data(RAW_COUNTIES_FILE)
 
 def read_housing_file() -> pd.DataFrame:
-    if not path.isfile(HOUSING_PRICES_FILE):
-        pulled_housing_data = pd.read_csv(REALTOR_RAW_URL)
+    if not path.isfile(REALTOR_FILE):
+        pulled_housing_data = pd.read_csv(RAW_REALTOR_FILE)
         pulled_housing_data.to_csv(path_or_buf="./housing-data/realtor-data.csv")
         return pulled_housing_data
-    return pd.read_csv((HOUSING_PRICES_FILE))
+    return pd.read_csv(REALTOR_FILE)
 
 # Assumes , as delimiter by default
 def csv_to_df(file_name: str, delimiter: str =",") -> pd.DataFrame:
     return pd.read_csv(file_name, sep=delimiter)
+
+def prepare_counties_data(file_name: str) -> pd.DataFrame:
+    counties_file = open(file_name)
+    counties = []
+    for line in counties_file:
+        county = {}
+        line = line.split(",")
+
+        try: 
+            # Clean the county name by taking out the word 'County'
+            county["county"] = re.sub("County", "", line[0]).strip()
+        except:
+            county["county"] = np.Nan
+
+        try:
+            # Join th rest of the data together to split on a '$' instead
+            stringy_median = "".join(line[1:]).split("$")[1].strip()
+            county["median"] = int(stringy_median)
+        except:
+            county["median"] = np.NaN
+        
+        counties.append(county)
+
+    counties_df = pd.DataFrame(counties)
+
+    # Save counties data to file so that this operation only
+    # needs to be run to generate files
+    counties_df.to_csv(path_or_buf=COUNTIES_FILE)
+    
+    return counties_df
 
 
 def pull_down_store_csv():
