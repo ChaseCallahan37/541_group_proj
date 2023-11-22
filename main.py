@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from statsmodels.formula.api import ols 
 from scipy.optimize import curve_fit
 
-
+forgotten = {}
 
 # pd.set_option('display.max_rows', None)
 
@@ -249,7 +249,108 @@ def locate_county(zip_codes_df, zip):
 
 def read_store_data() -> pd.DataFrame:
     all_store_data = retrieve_store_file()
+    all_store_data["company_name"] = all_store_data["company_name"].apply(lambda x: re.sub("[^A-Za-z]", "_", x.strip()))
+    all_store_data["type"] = all_store_data["company_name"].apply(get_company_type)
+    all_store_data["subtype"] = all_store_data["company_name"].apply(get_company_subtype)
+    print(all_store_data)
     return all_store_data
+
+def get_company_type(company_name):
+    company_types = {
+        'Arbys': 'fast_food',
+        'Buffalo_Wild_Wings': 'casual_dining',
+        'Build_A_Bear': 'retail',
+        'Burger_King': 'fast_food',
+        "Caribou": "cafe",
+        'ChickFilA': 'fast_food',
+        'Chipotle': 'fast_food',
+        "Culvers": "fast_casual",
+        "CVS": "retail",
+        'Dairy_Queen': 'fast_food',
+        "Denny_s": "casual_dining",
+        "Dominos": "fast_food",
+            "Dunkin": "cafe",
+        'Hardee_s': 'fast_food',
+        'IHOP': 'casual_dining',
+        "Jack_in_the_Box": "fast_food",
+        "Jimmy_Johns": "fast_casual",
+        "KFC": "fast_food",
+        "Krispie_Kreme": "cafe",
+        'Little_Caesars': 'fast_food',
+        'McDonalds': 'fast_food',
+        'Olive_Garden': 'casual_dining',
+        "Panda_Express": "fast_casual",
+        "Panera": "fast_casual",
+        'Papa_Johns': 'fast_food',
+        "Pizza_Hut": "fast_food",
+        'Popeyes': 'fast_food',
+        "Sonic": "fast_food",
+        'Starbucks': 'cafe',
+        'Subway': 'fast_food',
+        'Target': 'retail',
+        "Taco_Bell": "fast_food",
+        'Tesla': 'automotive',
+        'Tim_Hortons': 'cafe',
+        'Trader_Joes': 'retail',
+        "Waffle_House": "casual_dining",
+        "Walgreen_s": "retail",
+        'Wendys': 'fast_food',
+        "Whataburger": "fast_food",
+        'White_Castle': 'fast_food',
+        "Wingstop": "fast_casual",
+        "Zaxbys": "fast_casual",
+    }
+    return company_types[company_name]
+    
+    
+
+def get_company_subtype(company_name):
+    company_subtypes = {
+        'Arbys': 'sandwich_shop',
+        'Buffalo_Wild_Wings': 'sports_bar',
+        'Build_A_Bear': 'toy_store',
+        'Burger_King': 'burger_restaurant',
+        "Caribou": "coffee_shop",
+        'ChickFilA': 'chicken_restaurant',
+        'Chipotle': 'mexican_grill',
+         "Culvers": "burger_restaurant",
+          "CVS": "pharmacy_and_convenience_store",
+        'Dairy_Queen': 'ice_cream_shop',
+        "Denny_s": "breakfast_restaurant",
+        "Dominos": "pizza_restaurant",
+         "Dunkin": "coffee_and_doughnut_shop",
+        'Hardee_s': 'burger_restaurant',
+        'IHOP': 'breakfast_restaurant',
+        "Jack_in_the_Box": "burger_restaurant",
+         "Jimmy_Johns": "sandwich_shop",
+        "KFC": "chicken_restaurant",
+        "Krispie_Kreme": "doughnut_shop",
+        'Little_Caesars': 'pizza_restaurant',
+        'McDonalds': 'burger_restaurant',
+        'Olive_Garden': 'italian_restaurant',
+        "Panda_Express": "chinese_restaurant",
+         "Panera": "bakery_cafe",
+        'Papa_Johns': 'pizza_restaurant',
+        "Pizza_Hut": "pizza_restaurant",
+        'Popeyes': 'chicken_restaurant',
+        "Sonic": "drive_in_restaurant",
+        'Starbucks': 'coffee_shop',
+        'Subway': 'sandwich_shop',
+         "Taco_Bell": "mexican_fast_food",
+        'Target': 'department_store',
+        'Tesla': 'electric_vehicles',
+        'Tim_Hortons': 'coffee_shop',
+        'Trader_Joes': 'grocery_store',
+        "Waffle_House": "breakfast_restaurant",
+         "Walgreen_s": "pharmacy_and_convenience_store",
+        'Wendys': 'burger_restaurant',
+         "Whataburger": "burger_restaurant",
+        'White_Castle': 'burger_restaurant',
+        "Wingstop": "chicken_wings_restaurant",
+        "Zaxbys": "chicken_restaurant",
+    }
+    return company_subtypes.get(company_name, 'Unknown')
+
 
 def retrieve_realtor_file() -> pd.DataFrame:
     # Checks for aggregated first, if not found,
