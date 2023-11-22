@@ -5,6 +5,11 @@ import numpy as np
 from bs4 import BeautifulSoup
 import requests
 import re
+import matplotlib.pyplot as plt
+from statsmodels.formula.api import ols 
+
+
+# pd.set_option('display.max_rows', None)
 
 # GLOBAL CONSTANTS
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
@@ -22,23 +27,47 @@ ZIP_CODES_FILE = "./zip-code-data/zip_code_database.csv"
 def main():
     stores_df = read_store_data()
     housing_df = read_housing_data()
+    counties_df = read_county_data()
     zip_codes_df = read_zip_data()
-    county_df = read_county_data()
 
     # If stores are not already populated with county, then do so and save it
     if not "county" in stores_df.columns:
         stores_df["county"] = stores_df["postal_code"].apply(lambda x: locate_county(zip_codes_df, x))
         stores_df.to_csv(path_or_buf=AGGREGATED_STORE_FILE)
 
-    print(stores_df.groupby(["county"]).value_counts())
-    print("end main")
+    stores_per_county = stores_df.groupby(["county","company_name"])[["county", "company_name"]].value_counts().to_frame().reset_index()
+    # stores_per_county["median"] = stores_per_county["county"].apply(lambda x: get_county_median(counties_df, x))
+  
+    stores_pivot = stores_per_county.pivot_table(index="county", columns="company_name", values="count", fill_value=0)
 
+    stores_pivot["median"] = stores_pivot.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
 
+    stores_pivot = stores_pivot[stores_pivot["median"].notna()]
+
+    print(stores_pivot)
+
+# Recieves the dataset with the counties information regarding median
+# home prices and the specific county that we are looking for
+def get_county_median(counties_df: pd.DataFrame, county: str) :
+    try:
+        # Attempt to locate the county within the dataset
+        median = counties_df.loc[county]["median"]
+        # If multiple counties with same name exist
+        # Then return nan
+        if isinstance(median, pd.Series):
+            return np.NaN
+
+        return median
+    except:
+        # If any failures occur, default to
+        # nan
+        return np.NaN
+    
 def locate_county(zip_codes_df, zip):
     try:
         first_section = zip.split(" ")[0]
         zip_int = int(first_section)
-        return zip_codes_df.loc[zip_int]["county"]
+        return zip_codes_df.loc[zip_int]["county"].lower()
     except:
         return np.NaN
     
@@ -59,14 +88,13 @@ def retrieve_realtor_file() -> pd.DataFrame:
         return csv_to_df(REALTOR_FILE)
     
 def retrieve_store_file() -> pd.DataFrame:
-    # Checks for aggregated first, if not found,
-    # then aggregated will be generated and returned
-    if not path.isfile(AGGREGATED_STORE_FILE):
-        return pull_down_store_csv()
-    # Otherwise we grab the aggregated data and return it
-    # as a data frame
-    else:
+    if path.isfile(AGGREGATED_STORE_FILE):
         return csv_to_df(AGGREGATED_STORE_FILE)
+
+    if len(list(glob("store-data/*.csv"))) > 0:
+        return aggregate_seperated_store_files()
+
+    return pull_down_store_csv()
 
 def aggregate_seperated_store_files() -> pd.DataFrame:
     # Get a reference to all csv files in the store-data
@@ -103,6 +131,7 @@ def read_zip_data() -> pd.DataFrame:
 
 def read_county_data() -> pd.DataFrame:
     county_df = read_county_file()
+    county_df = county_df.set_index("county")
     return county_df
 
 def read_county_file() -> pd.DataFrame:
@@ -130,7 +159,7 @@ def prepare_counties_data(file_name: str) -> pd.DataFrame:
 
         try: 
             # Clean the county name by taking out the word 'County'
-            county["county"] = re.sub("County", "", line[0]).strip()
+            county["county"] = re.sub("County", "", line[0]).strip().lower()
         except:
             county["county"] = np.Nan
 
