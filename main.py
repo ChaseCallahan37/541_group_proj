@@ -98,8 +98,8 @@ def menu_choice() -> str:
     print("4. View Analysis for Store Count")
     print("5. View Analysis for Stores with high Correlation Coefficients")
     print("6. View Store Makup Analysis")
-    print("exit to exit")
-    return input("Select Option: ").lower()
+    print(f"{Colors.RED}exit to exit{Colors.RESET}")
+    return input("\nSelect Option: ").lower()
 
     
 def overall_county_store_data(county_store_df: pd.DataFrame):
@@ -194,9 +194,30 @@ def view_store_makeup_analysis(county_store_df: pd.DataFrame, dependent: str, in
 
     for variable in independents:
         county_store_df[variable] = county_store_df.apply(lambda x: x[variable] / x["store_count"], axis=1)
+    
+    county_store_df.sort_values(["median"], ascending=True, inplace=True)
 
     store_makeup_ols = ols(formula=f"{dependent} ~ {' + '.join(independents)}", data=county_store_df).fit()
     print(store_makeup_ols.summary())
+
+    county_store_df['pred_median'] = store_makeup_ols.predict(county_store_df[independents])
+
+    median = county_store_df["median"]
+    pred_median = county_store_df["pred_median"]
+
+    plt.scatter(county_store_df.index, median, alpha=.6, s=2, color="blue")
+    plt.scatter(county_store_df.index, pred_median, alpha=.6, s=2, color="orange")
+    plt.show()
+
+    plt.scatter(median, pred_median, s=2, alpha=.6)
+    plt.axline((0, 0), (median.max(), median.max()), color="green")
+    plt.show()
+
+
+    store_makeup_corr = county_store_df[independents + [dependent]].corr(numeric_only=True)[dependent].sort_values(ascending=True)
+    print(store_makeup_corr)
+
+
 
 
 # Recieves the dataset with the counties information regarding median
