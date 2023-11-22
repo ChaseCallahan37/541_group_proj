@@ -37,7 +37,6 @@ class Colors:
 
 def main():
     stores_df = read_store_data()
-    housing_df = read_housing_data()
     counties_df = read_county_data()
     zip_codes_df = read_zip_data()
 
@@ -46,44 +45,65 @@ def main():
         stores_df["county"] = stores_df["postal_code"].apply(lambda x: locate_county(zip_codes_df, x))
         stores_df.to_csv(path_or_buf=AGGREGATED_STORE_FILE)
 
-    stores_per_county = stores_df.groupby(["county","company_name"])[["county", "company_name"]].value_counts().to_frame().reset_index()
     
-    print(stores_per_county)
+    # PREPARE STORE COUNT DATA
+    stores_per_county = stores_df.groupby(["county","company_name"])[["county", "company_name"]].value_counts().to_frame().reset_index()
+    county_store_count_df = stores_per_county.pivot_table(index="county", columns="company_name", values="count", fill_value=0)
+    county_store_count_df["median"] = county_store_count_df.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
+    county_store_count_df = county_store_count_df[county_store_count_df["median"].notna()]
 
-    county_store_df = stores_per_county.pivot_table(index="county", columns="company_name", values="count", fill_value=0)
-    county_store_df["median"] = county_store_df.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
-    county_store_df = county_store_df[county_store_df["median"].notna()]
+    # PREPARE STORE TYPE DATA
+    types_per_county = stores_df.groupby(["county", "type"])[["county", "type"]].value_counts().to_frame().reset_index()
+    county_store_type_df = types_per_county.pivot_table(index="county", columns="type", values="count", fill_value=0)
+    county_store_type_df["total_count"] = county_store_type_df.apply(lambda x: x.sum() , axis=1)
+    county_store_type_df["median"] = county_store_type_df.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
+    county_store_type_df = county_store_type_df[county_store_type_df["median"].notna()]
 
-    # Replace the column names with names that do not use spaces
-    new_names = {}
-    for name in county_store_df.columns:
-        new_names[name] = re.sub("[^A-Za-z]", "_", name.strip())
-    county_store_df.rename(columns=new_names, inplace=True)
+
+    # PREPARE STORE SUBTYPE DATA
+    subtypes_per_county = stores_df.groupby(["county", "subtype"])[["county", "subtype"]].value_counts().to_frame().reset_index()
+    county_store_subtype_df = subtypes_per_county.pivot_table(index="county", columns="subtype", values="count", fill_value=0)
+    county_store_subtype_df["total_count"] = county_store_subtype_df.apply(lambda x: x.sum() , axis=1)
+    county_store_subtype_df["median"] = county_store_subtype_df.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
+    county_store_subtype_df = county_store_subtype_df[county_store_subtype_df["median"].notna()]
+
+    print(county_store_subtype_df)
 
     # CORRELATION COEFFICIENTS
-    median_cor = county_store_df.corr(numeric_only=True)["median"].sort_values(ascending=True)
+    median_cor = county_store_count_df.corr(numeric_only=True)["median"].sort_values(ascending=True)
     # company_corr_df = median_cor.to_frame().reset_index().set_index("company_name").rename(columns={"median": "correlation_coefficient"})
     company_corr_df = median_cor.to_frame().reset_index().rename(columns={"median": "correlation_coefficient"})
     company_corr_df = company_corr_df[company_corr_df["company_name"] != "median"]
 
     # Factors for analysis
     dependent = "median"
-    independents = list(filter(lambda x: (x != dependent), county_store_df.columns))
+    store_factors = list(filter(lambda x: (x != dependent), county_store_count_df.columns))
+    type_factors =  list(filter(lambda x: (not(x == dependent or x == "total_count")), county_store_type_df.columns))
+    subtype_factors =  list(filter(lambda x: (not(x == dependent or x == "total_count")), county_store_subtype_df.columns))
+
 
     user_choice = menu_choice()
     while user_choice != "exit":
         if(user_choice == "1"):
-            overall_county_store_data(county_store_df)
+            overall_county_store_data(county_store_count_df)
         elif(user_choice == "2"):
             show_company_corr_coef(company_corr_df)
         elif(user_choice == "3"):
-            all_store_analysis(county_store_df, dependent, independents)
+            all_store_analysis(county_store_count_df, dependent, store_factors)
         elif(user_choice == "4"):
-            store_count_analysis(county_store_df, dependent, independents)
+            store_count_analysis(county_store_count_df, dependent, store_factors)
         elif(user_choice == "5"):
-            high_store_corr_coef_analysis(county_store_df,company_corr_df, independents)
+            high_store_corr_coef_analysis(county_store_count_df,company_corr_df, store_factors)
         elif(user_choice == "6"):
-            view_store_makeup_analysis(county_store_df, dependent, independents)
+            view_store_makeup_analysis(county_store_count_df, dependent, store_factors)
+        elif(user_choice == "7"):
+            view_type_count_analysis(county_store_type_df, dependent, type_factors)
+        elif(user_choice == "8"):
+            view_type_makeup_analysis(county_store_type_df, dependent, type_factors)
+        elif(user_choice == "9"):
+            view_subtype_count_analysis(county_store_subtype_df, dependent, subtype_factors)
+        elif(user_choice == "10"):
+            view_subtype_makeup_analysis(county_store_subtype_df, dependent, subtype_factors)
         elif(user_choice == "exit"):
             print("Bye!")
         else:
@@ -98,13 +118,17 @@ def menu_choice() -> str:
     print("4. View Analysis for Store Count")
     print("5. View Analysis for Stores with high Correlation Coefficients")
     print("6. View Store Makup Analysis")
+    print("7. View Store Type Count Analysis")
+    print("8. View Store Type Makup Analysis")
+    print("9. View Store Subtype Count Analysis")
+    print("10. View Store Subtype Makup Analysis")
     print(f"{Colors.RED}exit to exit{Colors.RESET}")
     return input("\nSelect Option: ").lower()
 
     
-def overall_county_store_data(county_store_df: pd.DataFrame):
+def overall_county_store_data(county_store_count_df: pd.DataFrame):
     print(f"\n\n{Colors.CYAN}STRUCTURED STORE DATA WITH COUNTY{Colors.RESET}\n")
-    print(county_store_df)
+    print(county_store_count_df)
 
 def show_company_corr_coef(company_corr_df: pd.DataFrame):
     print(f"\n\n{Colors.CYAN}CORRELATION COEFICIENTS{Colors.RESET}\n")
@@ -118,19 +142,19 @@ def show_company_corr_coef(company_corr_df: pd.DataFrame):
     plt.yticks(np.arange(0, 1.05, .05))
     plt.show()
 
-def all_store_analysis(county_store_df: pd.DataFrame, dependent: str, independents):
+def all_store_analysis(county_store_count_df: pd.DataFrame, dependent: str, store_factors):
     # OLS ANALYSIS FOR ALL STORES
 
     # Join all the column names together via a space (except for the dependent)
     # variable, so that they may be interpolated into the formula
-    all_store_ols = ols(formula=f"{dependent} ~ {' + '.join(independents)}", data=county_store_df).fit()
+    all_store_ols = ols(formula=f"{dependent} ~ {' + '.join(store_factors)}", data=county_store_count_df).fit()
 
     print(f"\n\n{Colors.CYAN}OLS MODEL SUMMARY{Colors.RESET}\n")
     print(all_store_ols.summary())
 
     # MEDIAN PREDICTION FOR ALL STORES COUNT
-    all_stores_pred_df = county_store_df.reset_index()[["county", "median"]]
-    all_stores_pred_df["pred_median"] = list(all_store_ols.predict(county_store_df[independents]))
+    all_stores_pred_df = county_store_count_df.reset_index()[["county", "median"]]
+    all_stores_pred_df["pred_median"] = list(all_store_ols.predict(county_store_count_df[store_factors]))
     all_stores_pred_df.sort_values(["median"], inplace=True, ascending=True)
     print(all_stores_pred_df[["median", "pred_median"]])
     plt.title("")
@@ -149,31 +173,35 @@ def all_store_analysis(county_store_df: pd.DataFrame, dependent: str, independen
     plt.show()
 
 
-def store_count_analysis(county_store_df: pd.DataFrame, dependent: str, independents):
-
+def store_count_analysis(county_store_count_df: pd.DataFrame, dependent: str, store_factors):
+    print(county_store_count_df)
     # OLS ANALYSIS FOR STORE COUNT
-    store_count_pred_df = county_store_df.reset_index()[["county", "median"]]
-    store_count_pred_df["store_count"] = list(county_store_df[independents].sum(axis=1).to_frame()[0])
+    store_count_pred_df = county_store_count_df.reset_index()[["county", "median"]]
+    store_count_pred_df["store_count"] = list(county_store_count_df[store_factors].sum(axis=1).to_frame()[0])
     store_count_ols = ols(formula=f"{dependent} ~ store_count", data=store_count_pred_df).fit()
     print(store_count_ols.summary())
 
-    store_count_pred_df["price_pred"] = store_count_ols.predict(store_count_pred_df["store_count"])
+    store_count_pred_df["pred_median"] = store_count_ols.predict(store_count_pred_df["store_count"])
     store_count_pred_df.sort_values(["median"], ascending=True, inplace=True)
+
+    median = store_count_pred_df["median"]
+    pred_median = store_count_pred_df["pred_median"]
+
     print(store_count_pred_df)
-    plt.scatter(store_count_pred_df["county"], store_count_pred_df["median"], alpha=1, s=2)
-    plt.scatter(store_count_pred_df["county"], store_count_pred_df["pred_median"], alpha=1, s=2)
+    plt.scatter(store_count_pred_df["county"], median, alpha=1, s=2)
+    plt.scatter(store_count_pred_df["county"], pred_median, alpha=1, s=2)
 
     plt.show()
     
-def high_store_corr_coef_analysis(county_store_df: pd.DataFrame, company_corr_df, independents):
+def high_store_corr_coef_analysis(county_store_count_df: pd.DataFrame, company_corr_df, store_factors):
 
     # OLS ANALYSIS FOR STORES WITH GREATER THAN .3 CORRELATION COEFFICIENTS
-    county_store_df.sort_values(["median"], ascending=True, inplace=True)
-    high_corr_independents = list(filter(lambda x:  (company_corr_df[company_corr_df['company_name'] == x]['correlation_coefficient'] > .3).all(), independents))
-    high_corr_ols = ols(formula=f"median ~ {' + '.join(high_corr_independents)}", data=county_store_df).fit()
+    county_store_count_df.sort_values(["median"], ascending=True, inplace=True)
+    high_corr_store_factors = list(filter(lambda x:  (company_corr_df[company_corr_df['company_name'] == x]['correlation_coefficient'] > .3).all(), store_factors))
+    high_corr_ols = ols(formula=f"median ~ {' + '.join(high_corr_store_factors)}", data=county_store_count_df).fit()
 
-    high_corr_pred_df = county_store_df.reset_index()[["county", "median"]]
-    high_corr_pred_df["pred_median"] = list(high_corr_ols.predict(county_store_df[high_corr_independents]))
+    high_corr_pred_df = county_store_count_df.reset_index()[["county", "median"]]
+    high_corr_pred_df["pred_median"] = list(high_corr_ols.predict(county_store_count_df[high_corr_store_factors]))
     print(high_corr_pred_df)
     plt.scatter(high_corr_pred_df["county"], high_corr_pred_df["median"], alpha=1, s=2)
     plt.scatter(high_corr_pred_df["county"], high_corr_pred_df["pred_median"], alpha=1, s=2)
@@ -188,25 +216,25 @@ def high_store_corr_coef_analysis(county_store_df: pd.DataFrame, company_corr_df
     plt.ylabel("Predicted Median")
     plt.show()     
 
-def view_store_makeup_analysis(county_store_df: pd.DataFrame, dependent: str, independents):
-    county_store_df["store_count"] = list(county_store_df[independents].sum(axis=1).to_frame()[0])
-    county_store_df = county_store_df[county_store_df["store_count"] > 0]
+def view_store_makeup_analysis(county_store_count_df: pd.DataFrame, dependent: str, store_factors):
+    county_store_count_df["store_count"] = list(county_store_count_df[store_factors].sum(axis=1).to_frame()[0])
+    county_store_count_df = county_store_count_df[county_store_count_df["store_count"] > 0]
 
-    for variable in independents:
-        county_store_df[variable] = county_store_df.apply(lambda x: x[variable] / x["store_count"], axis=1)
+    for variable in store_factors:
+        county_store_count_df[variable] = county_store_count_df.apply(lambda x: x[variable] / x["store_count"], axis=1)
     
-    county_store_df.sort_values(["median"], ascending=True, inplace=True)
+    county_store_count_df.sort_values(["median"], ascending=True, inplace=True)
 
-    store_makeup_ols = ols(formula=f"{dependent} ~ {' + '.join(independents)}", data=county_store_df).fit()
+    store_makeup_ols = ols(formula=f"{dependent} ~ {' + '.join(store_factors)}", data=county_store_count_df).fit()
     print(store_makeup_ols.summary())
 
-    county_store_df['pred_median'] = store_makeup_ols.predict(county_store_df[independents])
+    county_store_count_df['pred_median'] = store_makeup_ols.predict(county_store_count_df[store_factors])
 
-    median = county_store_df["median"]
-    pred_median = county_store_df["pred_median"]
+    median = county_store_count_df["median"]
+    pred_median = county_store_count_df["pred_median"]
 
-    plt.scatter(county_store_df.index, median, alpha=.6, s=2, color="blue")
-    plt.scatter(county_store_df.index, pred_median, alpha=.6, s=2, color="orange")
+    plt.scatter(county_store_count_df.index, median, alpha=.6, s=2, color="blue")
+    plt.scatter(county_store_count_df.index, pred_median, alpha=.6, s=2, color="orange")
     plt.show()
 
     plt.scatter(median, pred_median, s=2, alpha=.6)
@@ -214,11 +242,99 @@ def view_store_makeup_analysis(county_store_df: pd.DataFrame, dependent: str, in
     plt.show()
 
 
-    store_makeup_corr = county_store_df[independents + [dependent]].corr(numeric_only=True)[dependent].sort_values(ascending=True)
+    store_makeup_corr = county_store_count_df[store_factors + [dependent]].corr(numeric_only=True)[dependent].sort_values(ascending=True)
     print(store_makeup_corr)
 
+def view_type_count_analysis(county_store_type_df: pd.DataFrame, dependent: str, type_factors):
+    print(county_store_type_df)
+    store_type_ols = ols(formula=f"{dependent} ~ {' + '.join(type_factors)}", data=county_store_type_df).fit()
+    print(store_type_ols.summary())
+
+    county_store_type_df.sort_values(["median"], ascending=True, inplace=True)
+
+    county_store_type_df["pred_median"] = store_type_ols.predict(county_store_type_df[type_factors])
+
+    median = county_store_type_df["median"]
+    pred_median = county_store_type_df["pred_median"]
+    counties = county_store_type_df.index
+
+    plt.scatter(counties, median, alpha=.6, s=2, color="blue")
+    plt.scatter(counties, pred_median, alpha=.6, s=2, color="orange")
+    plt.show()
+
+    plt.scatter(median, pred_median, s=2, alpha=.6)
+    plt.axline((0, 0), (median.max(), median.max()), color="green")
+    plt.show()
+
+def view_type_makeup_analysis(county_store_type_df: pd.DataFrame, dependent: str, type_factors):
+
+    for variable in type_factors:
+        county_store_type_df[variable] = county_store_type_df.apply(lambda x: x[variable]/x["total_count"], axis=1)
+    
+    store_type_ols = ols(formula=f"{dependent} ~ {' + '.join(type_factors)}", data=county_store_type_df).fit()
+    print(store_type_ols.summary())
+
+    county_store_type_df.sort_values(["median"], ascending=True, inplace=True)
+
+    county_store_type_df["pred_median"] = store_type_ols.predict(county_store_type_df[type_factors])
+
+    median = county_store_type_df["median"]
+    pred_median = county_store_type_df["pred_median"]
+    counties = county_store_type_df.index
+
+    plt.scatter(counties, median, alpha=.6, s=2, color="blue")
+    plt.scatter(counties, pred_median, alpha=.6, s=2, color="orange")
+    plt.show()
+
+    plt.scatter(median, pred_median, s=2, alpha=.6)
+    plt.axline((0, 0), (median.max(), median.max()), color="green")
+    plt.show()
 
 
+def view_subtype_count_analysis(county_store_subtype_df: pd.DataFrame, dependent: str, subtype_factors):
+    print(county_store_subtype_df)
+    store_type_ols = ols(formula=f"{dependent} ~ {' + '.join(subtype_factors)}", data=county_store_subtype_df).fit()
+    print(store_type_ols.summary())
+
+    county_store_subtype_df.sort_values(["median"], ascending=True, inplace=True)
+
+    county_store_subtype_df["pred_median"] = store_type_ols.predict(county_store_subtype_df[subtype_factors])
+
+    median = county_store_subtype_df["median"]
+    pred_median = county_store_subtype_df["pred_median"]
+    counties = county_store_subtype_df.index
+
+    plt.scatter(counties, median, alpha=.6, s=2, color="blue")
+    plt.scatter(counties, pred_median, alpha=.6, s=2, color="orange")
+    plt.show()
+
+    plt.scatter(median, pred_median, s=2, alpha=.6)
+    plt.axline((0, 0), (median.max(), median.max()), color="green")
+    plt.show()
+
+def view_subtype_makeup_analysis(county_store_subtype_df: pd.DataFrame, dependent: str, subtype_factors):
+
+    for variable in subtype_factors:
+        county_store_subtype_df[variable] = county_store_subtype_df.apply(lambda x: x[variable]/x["total_count"], axis=1)
+    
+    store_type_ols = ols(formula=f"{dependent} ~ {' + '.join(subtype_factors)}", data=county_store_subtype_df).fit()
+    print(store_type_ols.summary())
+
+    county_store_subtype_df.sort_values(["median"], ascending=True, inplace=True)
+
+    county_store_subtype_df["pred_median"] = store_type_ols.predict(county_store_subtype_df[subtype_factors])
+
+    median = county_store_subtype_df["median"]
+    pred_median = county_store_subtype_df["pred_median"]
+    counties = county_store_subtype_df.index
+
+    plt.scatter(counties, median, alpha=.6, s=2, color="blue")
+    plt.scatter(counties, pred_median, alpha=.6, s=2, color="orange")
+    plt.show()
+
+    plt.scatter(median, pred_median, s=2, alpha=.6)
+    plt.axline((0, 0), (median.max(), median.max()), color="green")
+    plt.show()
 
 # Recieves the dataset with the counties information regarding median
 # home prices and the specific county that we are looking for
@@ -252,7 +368,6 @@ def read_store_data() -> pd.DataFrame:
     all_store_data["company_name"] = all_store_data["company_name"].apply(lambda x: re.sub("[^A-Za-z]", "_", x.strip()))
     all_store_data["type"] = all_store_data["company_name"].apply(get_company_type)
     all_store_data["subtype"] = all_store_data["company_name"].apply(get_company_subtype)
-    print(all_store_data)
     return all_store_data
 
 def get_company_type(company_name):
