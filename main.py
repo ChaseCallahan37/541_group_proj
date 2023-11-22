@@ -7,6 +7,8 @@ import requests
 import re
 import matplotlib.pyplot as plt
 from statsmodels.formula.api import ols 
+from scipy.optimize import curve_fit
+
 
 
 # pd.set_option('display.max_rows', None)
@@ -45,30 +47,66 @@ def main():
         stores_df.to_csv(path_or_buf=AGGREGATED_STORE_FILE)
 
     stores_per_county = stores_df.groupby(["county","company_name"])[["county", "company_name"]].value_counts().to_frame().reset_index()
+    
+    print(stores_per_county)
 
-    stores_pivot = stores_per_county.pivot_table(index="county", columns="company_name", values="count", fill_value=0)
-    stores_pivot["median"] = stores_pivot.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
-    stores_pivot = stores_pivot[stores_pivot["median"].notna()]
-
-    print(f"\n\n{Colors.CYAN}STRUCTURED STORE DATA WITH COUNTY{Colors.RESET}\n")
-    print(stores_pivot)
+    county_store_df = stores_per_county.pivot_table(index="county", columns="company_name", values="count", fill_value=0)
+    county_store_df["median"] = county_store_df.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
+    county_store_df = county_store_df[county_store_df["median"].notna()]
 
     # Replace the column names with names that do not use spaces
     new_names = {}
-    for name in stores_pivot.columns:
+    for name in county_store_df.columns:
         new_names[name] = re.sub("[^A-Za-z]", "_", name.strip())
-    stores_pivot.rename(columns=new_names, inplace=True)
+    county_store_df.rename(columns=new_names, inplace=True)
 
     # CORRELATION COEFFICIENTS
-    median_cor = stores_pivot.corr(numeric_only=True)["median"].abs().sort_values(ascending=True)
-    print(f"\n\n{Colors.CYAN}CORRELATION COEFICIENTS{Colors.RESET}\n")
-    print(median_cor)
+    median_cor = county_store_df.corr(numeric_only=True)["median"].sort_values(ascending=True)
     # company_corr_df = median_cor.to_frame().reset_index().set_index("company_name").rename(columns={"median": "correlation_coefficient"})
     company_corr_df = median_cor.to_frame().reset_index().rename(columns={"median": "correlation_coefficient"})
     company_corr_df = company_corr_df[company_corr_df["company_name"] != "median"]
-    print(company_corr_df)
+
+    # Factors for analysis
+    dependent = "median"
+    independents = list(filter(lambda x: (x != dependent), county_store_df.columns))
+
+    user_choice = menu_choice()
+    while user_choice != "exit":
+        if(user_choice == "1"):
+            overall_county_store_data(county_store_df)
+        elif(user_choice == "2"):
+            show_company_corr_coef(company_corr_df)
+        elif(user_choice == "3"):
+            all_store_analysis(county_store_df, dependent, independents)
+        elif(user_choice == "4"):
+            store_count_analysis(county_store_df, dependent, independents)
+        elif(user_choice == "5"):
+            high_store_corr_coef_analysis(county_store_df,company_corr_df, independents)
+        elif(user_choice == "exit"):
+            print("Bye!")
+        else:
+            print("INVALID INPUT!")
+        press_enter()
+        user_choice = menu_choice()
+
+def menu_choice() -> str:
+    print("1. View Overall County Store Data")
+    print("2. View Company Correlation Coefficients")
+    print("3. View Analysis for All Stores")
+    print("4. View Analysis for Store Count")
+    print("5. View Analysis for Stores with high Correlation Coefficients")
+    print("exit to exit")
+    return input("Select Option: ").lower()
+
     
-    print(company_corr_df["company_name"])
+def overall_county_store_data(county_store_df: pd.DataFrame):
+    print(f"\n\n{Colors.CYAN}STRUCTURED STORE DATA WITH COUNTY{Colors.RESET}\n")
+    print(county_store_df)
+
+def show_company_corr_coef(company_corr_df: pd.DataFrame):
+    print(f"\n\n{Colors.CYAN}CORRELATION COEFICIENTS{Colors.RESET}\n")
+    print(company_corr_df)
+
     plt.bar(x=company_corr_df["company_name"], height=company_corr_df["correlation_coefficient"])
     plt.title("Company Count Correlation to Median Home Price")
     plt.xlabel("Companies")
@@ -77,17 +115,76 @@ def main():
     plt.yticks(np.arange(0, 1.05, .05))
     plt.show()
 
-    # OLS ANALYSIS
+def all_store_analysis(county_store_df: pd.DataFrame, dependent: str, independents):
+    # OLS ANALYSIS FOR ALL STORES
 
     # Join all the column names together via a space (except for the dependent)
     # variable, so that they may be interpolated into the formula
-    dependent = "median"
-    factors = " + ".join(filter(lambda x: (x != dependent), stores_pivot.columns))
-    ols_model = ols(formula=f"{dependent} ~ {factors}", data=stores_pivot).fit()
+    all_store_ols = ols(formula=f"{dependent} ~ {' + '.join(independents)}", data=county_store_df).fit()
 
     print(f"\n\n{Colors.CYAN}OLS MODEL SUMMARY{Colors.RESET}\n")
-    print(ols_model.summary())
+    print(all_store_ols.summary())
 
+    # MEDIAN PREDICTION FOR ALL STORES COUNT
+    all_stores_pred_df = county_store_df.reset_index()[["county", "median"]]
+    all_stores_pred_df["pred_median"] = list(all_store_ols.predict(county_store_df[independents]))
+    all_stores_pred_df.sort_values(["median"], inplace=True, ascending=True)
+    print(all_stores_pred_df[["median", "pred_median"]])
+    plt.title("")
+    plt.scatter(all_stores_pred_df["county"], all_stores_pred_df["median"], alpha=1, s=2)
+    plt.scatter(all_stores_pred_df["county"], all_stores_pred_df["pred_median"], alpha=1, s=2)
+    plt.show()
+
+    median = all_stores_pred_df["median"]
+    pred_median = all_stores_pred_df["pred_median"]
+    plt.scatter(median, pred_median, s=2)
+    plt.axline((0, 0), (median.max(), pred_median.max()), color="red")
+
+    plt.title("Accuracy of All Store Model")
+    plt.xlabel("Actual Median")
+    plt.ylabel("Predicted Median")
+    plt.show()
+
+
+def store_count_analysis(county_store_df: pd.DataFrame, dependent: str, independents):
+
+    # OLS ANALYSIS FOR STORE COUNT
+    store_count_pred_df = county_store_df.reset_index()[["county", "median"]]
+    print(county_store_df[independents])
+    store_count_pred_df["store_count"] = list(county_store_df[independents].sum(axis=1).to_frame()[0])
+    store_count_ols = ols(formula=f"{dependent} ~ store_count", data=store_count_pred_df).fit()
+    print(store_count_ols.summary())
+
+    store_count_pred_df["price_pred"] = store_count_ols.predict(store_count_pred_df["store_count"])
+    store_count_pred_df.sort_values(["median"], ascending=True, inplace=True)
+    print(store_count_pred_df)
+    plt.scatter(store_count_pred_df["county"], store_count_pred_df["median"], alpha=1, s=2)
+    plt.scatter(store_count_pred_df["county"], store_count_pred_df["pred_median"], alpha=1, s=2)
+
+    plt.show()
+    
+def high_store_corr_coef_analysis(county_store_df: pd.DataFrame, company_corr_df, independents):
+
+    # OLS ANALYSIS FOR STORES WITH GREATER THAN .3 CORRELATION COEFFICIENTS
+    county_store_df.sort_values(["median"], ascending=True, inplace=True)
+    high_corr_independents = list(filter(lambda x:  (company_corr_df[company_corr_df['company_name'] == x]['correlation_coefficient'] > .3).all(), independents))
+    high_corr_ols = ols(formula=f"median ~ {' + '.join(high_corr_independents)}", data=county_store_df).fit()
+
+    high_corr_pred_df = county_store_df.reset_index()[["county", "median"]]
+    high_corr_pred_df["pred_median"] = list(high_corr_ols.predict(county_store_df[high_corr_independents]))
+    print(high_corr_pred_df)
+    plt.scatter(high_corr_pred_df["county"], high_corr_pred_df["median"], alpha=1, s=2)
+    plt.scatter(high_corr_pred_df["county"], high_corr_pred_df["pred_median"], alpha=1, s=2)
+    plt.show()
+    median = high_corr_pred_df["median"]
+    pred_median = high_corr_pred_df["pred_median"]
+    plt.scatter(median, pred_median, s=2)
+    plt.axline((0, 0), (median.max(), pred_median.max()), color="red")
+
+    plt.title("Accuracy of Model High Store Correlation Model")
+    plt.xlabel("Actual Median")
+    plt.ylabel("Predicted Median")
+    plt.show()     
 
 
 # Recieves the dataset with the counties information regarding median
@@ -234,5 +331,10 @@ def pull_down_store_csv():
 
     df.to_csv(AGGREGATED_STORE_FILE)
     return df
+
+def press_enter():
+    input("\nPress enter to continue...")
+    for i in range(0, 100): 
+        print("\n")
 
 main()
