@@ -142,7 +142,7 @@ def show_company_corr_coef(company_corr_df: pd.DataFrame):
     plt.yticks(np.arange(0, 1.05, .05))
     plt.show()
 
-def all_store_analysis(county_store_count_df: pd.DataFrame, dependent: str, store_factors):
+def all_store_analysis(county_store_count_df: pd.DataFrame, dependent: str, store_factors: list[str]):
     # OLS ANALYSIS FOR ALL STORES
 
     # Join all the column names together via a space (except for the dependent)
@@ -173,7 +173,7 @@ def all_store_analysis(county_store_count_df: pd.DataFrame, dependent: str, stor
     plt.show()
 
 
-def store_count_analysis(county_store_count_df: pd.DataFrame, dependent: str, store_factors):
+def store_count_analysis(county_store_count_df: pd.DataFrame, dependent: str, store_factors: list[str]):
     print(county_store_count_df)
     # OLS ANALYSIS FOR STORE COUNT
     store_count_pred_df = county_store_count_df.reset_index()[["county", "median"]]
@@ -193,7 +193,7 @@ def store_count_analysis(county_store_count_df: pd.DataFrame, dependent: str, st
 
     plt.show()
     
-def high_store_corr_coef_analysis(county_store_count_df: pd.DataFrame, company_corr_df, store_factors):
+def high_store_corr_coef_analysis(county_store_count_df: pd.DataFrame, company_corr_df, store_factors: list[str]):
 
     # OLS ANALYSIS FOR STORES WITH GREATER THAN .3 CORRELATION COEFFICIENTS
     county_store_count_df.sort_values(["median"], ascending=True, inplace=True)
@@ -216,7 +216,7 @@ def high_store_corr_coef_analysis(county_store_count_df: pd.DataFrame, company_c
     plt.ylabel("Predicted Median")
     plt.show()     
 
-def view_store_makeup_analysis(county_store_count_df: pd.DataFrame, dependent: str, store_factors):
+def view_store_makeup_analysis(county_store_count_df: pd.DataFrame, dependent: str, store_factors: list[str]):
     county_store_count_df["store_count"] = list(county_store_count_df[store_factors].sum(axis=1).to_frame()[0])
     county_store_count_df = county_store_count_df[county_store_count_df["store_count"] > 0]
 
@@ -245,7 +245,7 @@ def view_store_makeup_analysis(county_store_count_df: pd.DataFrame, dependent: s
     store_makeup_corr = county_store_count_df[store_factors + [dependent]].corr(numeric_only=True)[dependent].sort_values(ascending=True)
     print(store_makeup_corr)
 
-def view_type_count_analysis(county_store_type_df: pd.DataFrame, dependent: str, type_factors):
+def view_type_count_analysis(county_store_type_df: pd.DataFrame, dependent: str, type_factors: list[str]):
     print(county_store_type_df)
     store_type_ols = ols(formula=f"{dependent} ~ {' + '.join(type_factors)}", data=county_store_type_df).fit()
     print(store_type_ols.summary())
@@ -266,7 +266,7 @@ def view_type_count_analysis(county_store_type_df: pd.DataFrame, dependent: str,
     plt.axline((0, 0), (median.max(), median.max()), color="green")
     plt.show()
 
-def view_type_makeup_analysis(county_store_type_df: pd.DataFrame, dependent: str, type_factors):
+def view_type_makeup_analysis(county_store_type_df: pd.DataFrame, dependent: str, type_factors: list[str]):
 
     for variable in type_factors:
         county_store_type_df[variable] = county_store_type_df.apply(lambda x: x[variable]/x["total_count"], axis=1)
@@ -291,7 +291,7 @@ def view_type_makeup_analysis(county_store_type_df: pd.DataFrame, dependent: str
     plt.show()
 
 
-def view_subtype_count_analysis(county_store_subtype_df: pd.DataFrame, dependent: str, subtype_factors):
+def view_subtype_count_analysis(county_store_subtype_df: pd.DataFrame, dependent: str, subtype_factors: list[str]):
     print(county_store_subtype_df)
     store_type_ols = ols(formula=f"{dependent} ~ {' + '.join(subtype_factors)}", data=county_store_subtype_df).fit()
     print(store_type_ols.summary())
@@ -312,7 +312,7 @@ def view_subtype_count_analysis(county_store_subtype_df: pd.DataFrame, dependent
     plt.axline((0, 0), (median.max(), median.max()), color="green")
     plt.show()
 
-def view_subtype_makeup_analysis(county_store_subtype_df: pd.DataFrame, dependent: str, subtype_factors):
+def view_subtype_makeup_analysis(county_store_subtype_df: pd.DataFrame, dependent: str, subtype_factors: list[str]):
 
     for variable in subtype_factors:
         county_store_subtype_df[variable] = county_store_subtype_df.apply(lambda x: x[variable]/x["total_count"], axis=1)
