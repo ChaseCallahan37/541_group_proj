@@ -316,7 +316,7 @@ def view_subtype_makeup_analysis(county_store_subtype_df: pd.DataFrame, dependen
 
     for variable in subtype_factors:
         county_store_subtype_df[variable] = county_store_subtype_df.apply(lambda x: x[variable]/x["total_count"], axis=1)
-    
+    display_ols_model(df=county_store_subtype_df, dependent=dependent, factors=subtype_factors, title="Store Subtype Percentage Model")
     store_type_ols = ols(formula=f"{dependent} ~ {' + '.join(subtype_factors)}", data=county_store_subtype_df).fit()
     print(store_type_ols.summary())
 
@@ -335,6 +335,33 @@ def view_subtype_makeup_analysis(county_store_subtype_df: pd.DataFrame, dependen
     plt.scatter(median, pred_median, s=2, alpha=.6)
     plt.axline((0, 0), (median.max(), median.max()), color="green")
     plt.show()
+
+def display_ols_model(df: pd.DataFrame, dependent: str, factors: list[str], title: str):
+    store_type_ols = ols(formula=f"{dependent} ~ {' + '.join(factors)}", data=df).fit()
+    print(store_type_ols.summary())
+
+    df.sort_values([dependent], ascending=True, inplace=True)
+
+    df[f"pred_{dependent}"] = store_type_ols.predict(df[factors])
+
+    dependent_col = df[dependent]
+    pred_dependent_col = df[f"pred_{dependent}"]
+    counties = df.index
+
+    plt.scatter(counties, dependent_col, alpha=.6, s=2, color="blue")
+    plt.scatter(counties, pred_dependent_col, alpha=.6, s=2, color="orange")
+    plt.title(title)
+    plt.xlabel("Counties")
+    plt.ylabel(f"{dependent}")
+    plt.xlabel
+    plt.show()
+
+    plt.scatter(dependent_col, pred_dependent_col, s=2, alpha=.6)
+    plt.axline((0, 0), (dependent_col.max(), dependent_col.max()), color="green")
+    plt.title(f"{title} Accuracy")
+    plt.xlabel(f"{dependent} Actual")
+    plt.ylabel(f"{dependent} Predicted")
+    plt.show() 
 
 # Recieves the dataset with the counties information regarding median
 # home prices and the specific county that we are looking for
