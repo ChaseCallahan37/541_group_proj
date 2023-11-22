@@ -82,6 +82,8 @@ def main():
             store_count_analysis(county_store_df, dependent, independents)
         elif(user_choice == "5"):
             high_store_corr_coef_analysis(county_store_df,company_corr_df, independents)
+        elif(user_choice == "6"):
+            view_store_makeup_analysis(county_store_df, dependent, independents)
         elif(user_choice == "exit"):
             print("Bye!")
         else:
@@ -95,6 +97,7 @@ def menu_choice() -> str:
     print("3. View Analysis for All Stores")
     print("4. View Analysis for Store Count")
     print("5. View Analysis for Stores with high Correlation Coefficients")
+    print("6. View Store Makup Analysis")
     print("exit to exit")
     return input("Select Option: ").lower()
 
@@ -150,7 +153,6 @@ def store_count_analysis(county_store_df: pd.DataFrame, dependent: str, independ
 
     # OLS ANALYSIS FOR STORE COUNT
     store_count_pred_df = county_store_df.reset_index()[["county", "median"]]
-    print(county_store_df[independents])
     store_count_pred_df["store_count"] = list(county_store_df[independents].sum(axis=1).to_frame()[0])
     store_count_ols = ols(formula=f"{dependent} ~ store_count", data=store_count_pred_df).fit()
     print(store_count_ols.summary())
@@ -185,6 +187,16 @@ def high_store_corr_coef_analysis(county_store_df: pd.DataFrame, company_corr_df
     plt.xlabel("Actual Median")
     plt.ylabel("Predicted Median")
     plt.show()     
+
+def view_store_makeup_analysis(county_store_df: pd.DataFrame, dependent: str, independents):
+    county_store_df["store_count"] = list(county_store_df[independents].sum(axis=1).to_frame()[0])
+    county_store_df = county_store_df[county_store_df["store_count"] > 0]
+
+    for variable in independents:
+        county_store_df[variable] = county_store_df.apply(lambda x: x[variable] / x["store_count"], axis=1)
+
+    store_makeup_ols = ols(formula=f"{dependent} ~ {' + '.join(independents)}", data=county_store_df).fit()
+    print(store_makeup_ols.summary())
 
 
 # Recieves the dataset with the counties information regarding median
