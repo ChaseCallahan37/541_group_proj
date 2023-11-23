@@ -10,10 +10,6 @@ from statsmodels.formula.api import ols, logit
 from scipy.optimize import curve_fit
 from sklearn.metrics import mean_absolute_error, confusion_matrix, classification_report
 
-forgotten = {}
-
-# pd.set_option('display.max_rows', None)
-
 # GLOBAL CONSTANTS
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
 AGGREGATED_STORE_RAW_URL = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/store-data-aggregate.csv"
@@ -248,7 +244,6 @@ def display_logit_model(df: pd.DataFrame, dependent: str, factors: list[str], ti
     dependent_median = df[dependent].median()
     df[f"high_{dependent}"] = df[dependent].apply(lambda x: 1 if x >= dependent_median else 0)
 
-    # logit_model = logit(formula=f"high_{dependent} ~ {' + '.join(factors)}", data=df).fit()
     logit_model = logit(formula=f"high_{dependent} ~ {' + '.join(positive_corr_coef_factors)}", data=df).fit()
 
     df[f"prob_high_{dependent}"] = logit_model.predict(df[positive_corr_coef_factors])
@@ -285,8 +280,7 @@ def get_county_median(counties_df: pd.DataFrame, county: str) :
 
         return median
     except:
-        # If any failures occur, default to
-        # nan
+        # If any failures occur, default to nan
         return np.NaN
     
 def locate_county(zip_codes_df, zip):
@@ -521,5 +515,5 @@ def press_enter():
     input("\nPress enter to continue...")
     for i in range(0, 100): 
         print("\n")
-
+        
 main()
