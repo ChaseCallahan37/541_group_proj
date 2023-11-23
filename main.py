@@ -67,6 +67,13 @@ def main():
     county_store_subtype_df["median"] = county_store_subtype_df.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
     county_store_subtype_df = county_store_subtype_df[county_store_subtype_df["median"].notna()]
 
+    # PREPARE FAST FOOD DATA
+    fast_food_stores = stores_df[stores_df["type"] == "fast_food"].groupby(["county", "subtype"])[["county", "subtype"]].value_counts().to_frame().reset_index()
+    fast_food_df = fast_food_stores.pivot_table(index="county", columns="subtype", values="count", fill_value=0)
+    fast_food_df["total_count"] = fast_food_df.apply(lambda x: x.sum(), axis=1)
+    fast_food_df["median"] = county_store_subtype_df.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
+    fast_food_df = fast_food_df[fast_food_df["median"].notna()]
+
     print(county_store_subtype_df)
 
     # CORRELATION COEFFICIENTS
@@ -80,6 +87,7 @@ def main():
     store_factors = list(filter(lambda x: (x != dependent), county_store_count_df.columns))
     type_factors =  list(filter(lambda x: (not(x == dependent or x == "total_count")), county_store_type_df.columns))
     subtype_factors =  list(filter(lambda x: (not(x == dependent or x == "total_count")), county_store_subtype_df.columns))
+    fast_food_factors = list(filter(lambda x: (not (x == dependent or x == "total_count")), fast_food_df.columns))
 
 
     menu_options = [
@@ -92,6 +100,8 @@ def main():
         lambda: view_type_makeup_analysis(county_store_type_df, dependent, type_factors),
         lambda: view_subtype_count_analysis(county_store_subtype_df, dependent, subtype_factors),
         lambda: view_subtype_makeup_analysis(county_store_subtype_df, dependent, subtype_factors),
+        lambda: view_fast_food_count_analysis(fast_food_df, dependent, fast_food_factors),
+        lambda: view_fast_food_makeup_analysis(fast_food_df, dependent, fast_food_factors)
     ]
 
     user_choice = menu_choice()
@@ -169,10 +179,17 @@ def view_subtype_count_analysis(county_store_subtype_df: pd.DataFrame, dependent
     display_ols_model(df=county_store_subtype_df, dependent=dependent, factors=subtype_factors, title="Store Subtype Count Model")
 
 def view_subtype_makeup_analysis(county_store_subtype_df: pd.DataFrame, dependent: str, subtype_factors: list[str]):
-
     for variable in subtype_factors:
         county_store_subtype_df[variable] = county_store_subtype_df.apply(lambda x: x[variable]/x["total_count"], axis=1)
     display_ols_model(df=county_store_subtype_df, dependent=dependent, factors=subtype_factors, title="Store Subtype Percentage Model")
+
+def view_fast_food_count_analysis(fast_food_df: pd.DataFrame, dependent: str, fast_food_factors: list[str]):
+    display_ols_model(df=fast_food_df, dependent=dependent, factors=fast_food_factors, title="Fast Food SubType Count Model")
+
+def view_fast_food_makeup_analysis(fast_food_df: pd.DataFrame, dependent: str, fast_food_factors: list[str]):
+    for variable in fast_food_factors:
+        fast_food_df[variable] = fast_food_df.apply(lambda x: x[variable]/x["total_count"], axis=1)
+    display_ols_model(df=fast_food_df, dependent=dependent, factors=fast_food_factors, title="Fast Food SubType Count Model")
 
 def display_ols_model(df: pd.DataFrame, dependent: str, factors: list[str], title: str):
     df.sort_values([dependent], ascending=True, inplace=True)
