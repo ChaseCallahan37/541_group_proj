@@ -6,8 +6,9 @@ from bs4 import BeautifulSoup
 import requests
 import re
 import matplotlib.pyplot as plt
-from statsmodels.formula.api import ols 
+from statsmodels.formula.api import ols, logit
 from scipy.optimize import curve_fit
+from sklearn.metrics import mean_absolute_error, confusion_matrix, classification_report
 
 forgotten = {}
 
@@ -91,36 +92,34 @@ def main():
 
 
     menu_options = [
-        lambda: overall_county_store_data(county_store_count_df),
-        lambda: all_store_analysis(county_store_count_df, dependent, store_factors),
-        lambda: store_count_analysis(county_store_count_df, dependent, store_factors),
-        lambda: high_store_corr_coef_analysis(county_store_count_df,company_corr_df, dependent, store_factors),
-        lambda: view_store_makeup_analysis(county_store_count_df, dependent, store_factors),
-        lambda: view_type_count_analysis(county_store_type_df, dependent, type_factors),
-        lambda: view_type_makeup_analysis(county_store_type_df, dependent, type_factors),
-        lambda: view_subtype_count_analysis(county_store_subtype_df, dependent, subtype_factors),
-        lambda: view_subtype_makeup_analysis(county_store_subtype_df, dependent, subtype_factors),
-        lambda: view_fast_food_count_analysis(fast_food_df, dependent, fast_food_factors),
-        lambda: view_fast_food_makeup_analysis(fast_food_df, dependent, fast_food_factors)
+        {"title": "Store Count Model", "function": lambda title: store_count_model(county_store_count_df, dependent, store_factors, title),},
+        {"title": "Total Store Count Model", "function": lambda title: total_store_count_model(county_store_count_df, dependent, store_factors, title),},
+        {"title": "High Correlation Coefficient Store Count Model", "function": lambda title: high_store_count_corr_coef_model(county_store_count_df,company_corr_df, dependent, store_factors, title),},
+        {"title": "Store Percentage Model", "function": lambda title: store_percentage_makeup_model(county_store_count_df, dependent, store_factors, title),},
+        {"title": "Store Type Count Model", "function": lambda title: store_type_count_model(county_store_type_df, dependent, type_factors, title),},
+        {"title": "Store Type Percentage Model", "function": lambda title: store_type_percentage_makeup_model(county_store_type_df, dependent, type_factors, title),},
+        {"title": "Store Subtype Count Model", "function": lambda title: store_subtype_count_model(county_store_subtype_df, dependent, subtype_factors, title),},
+        {"title": "Store Subtype Percentage Model", "function": lambda title: store_subtype_percentage_makeup_model(county_store_subtype_df, dependent, subtype_factors, title),},
+        {"title": "Fast Food SubType Count Model", "function": lambda title: fast_food_subtype_count_model(fast_food_df, dependent, fast_food_factors, title),},
+        {"title": "Fast Food SubType Count Model", "function": lambda title: fast_food_subtype_percentage_makeup_model(fast_food_df, dependent, fast_food_factors, title)},
     ]
+
+
+    for i in range(1, (len(menu_options)+1)):
+        print(f"{i}. {menu_options[i-1]['title']}")
 
     user_choice = menu_choice()
     while user_choice != "exit":
-        menu_options[user_choice]()
+        chosen = menu_options[user_choice]
+        chosen["function"](chosen["title"])
         press_enter()
+
+        for i in range(1, (len(menu_options)+1)):
+            print(f"{i}. {menu_options[i-1]['title']}")
+
         user_choice = menu_choice()
 
 def menu_choice():
-    print("1. View Overall County Store Data")
-    print("2. View Company Correlation Coefficients")
-    print("3. View Analysis for All Stores")
-    print("4. View Analysis for Store Count")
-    print("5. View Analysis for Stores with high Correlation Coefficients")
-    print("6. View Store Makup Analysis")
-    print("7. View Store Type Count Analysis")
-    print("8. View Store Type Makup Analysis")
-    print("9. View Store Subtype Count Analysis")
-    print("10. View Store Subtype Makup Analysis")
     print(f"{Colors.RED}exit to exit{Colors.RESET}")
     choice = input("\nSelect Option: ").lower()
 
@@ -134,62 +133,66 @@ def menu_choice():
         print(f"{Colors.RED}{choice}{Colors.RESET} is not a valid optin!")
         return press_enter()
 
-    
-def overall_county_store_data(county_store_count_df: pd.DataFrame):
-    print(f"\n\n{Colors.CYAN}STRUCTURED STORE DATA WITH COUNTY{Colors.RESET}\n")
-    print(county_store_count_df)
+def store_count_model(county_store_count_df: pd.DataFrame, dependent: str, store_factors: list[str], title: str):
+    display_ols_model(df=county_store_count_df, dependent=dependent, factors=store_factors, title=title)
+    display_logit_model(df=county_store_count_df, dependent=dependent, factors=store_factors, title=title)
 
-def all_store_analysis(county_store_count_df: pd.DataFrame, dependent: str, store_factors: list[str]):
-    display_ols_model(df=county_store_count_df, dependent=dependent, factors=store_factors, title="Store Count Model")
-
-
-def store_count_analysis(county_store_count_df: pd.DataFrame, dependent: str, store_factors: list[str]):
+def total_store_count_model(county_store_count_df: pd.DataFrame, dependent: str, store_factors: list[str], title: str):
     store_count_pred_df = county_store_count_df.reset_index()[["county", "median"]]
     store_count_pred_df["store_count"] = list(county_store_count_df[store_factors].sum(axis=1).to_frame()[0])
     
-    display_ols_model(df=county_store_count_df, dependent=dependent, factors=store_factors, title="Total Store Count Model")
+    display_ols_model(df=county_store_count_df, dependent=dependent, factors=store_factors, title=title)
+    display_logit_model(df=county_store_count_df, dependent=dependent, factors=store_factors, title=title)
     
-def high_store_corr_coef_analysis(county_store_count_df: pd.DataFrame, company_corr_df, dependent: str, store_factors: list[str]):
+def high_store_count_corr_coef_model(county_store_count_df: pd.DataFrame, company_corr_df, dependent: str, store_factors: list[str], title: str):
     county_store_count_df.sort_values(["median"], ascending=True, inplace=True)
     high_corr_store_factors = list(filter(lambda x:  (company_corr_df[company_corr_df['company_name'] == x]['correlation_coefficient'] > .3).all(), store_factors))
 
-    display_ols_model(df=county_store_count_df, dependent=dependent, factors=high_corr_store_factors, title="High Correlation Coefficient Store Count Model")  
+    display_ols_model(df=county_store_count_df, dependent=dependent, factors=high_corr_store_factors, title=title)
+    display_logit_model(df=county_store_count_df, dependent=dependent, factors=store_factors, title=title)
 
-def view_store_makeup_analysis(county_store_count_df: pd.DataFrame, dependent: str, store_factors: list[str]):
+
+def store_percentage_makeup_model(county_store_count_df: pd.DataFrame, dependent: str, store_factors: list[str], title: str):
     county_store_count_df["store_count"] = list(county_store_count_df[store_factors].sum(axis=1).to_frame()[0])
     county_store_count_df = county_store_count_df[county_store_count_df["store_count"] > 0]
 
     for variable in store_factors:
         county_store_count_df[variable] = county_store_count_df.apply(lambda x: x[variable] / x["store_count"], axis=1)
     
-    display_ols_model(df=county_store_count_df, dependent=dependent, factors=store_factors, title="Store Percentage Model")
+    display_ols_model(df=county_store_count_df, dependent=dependent, factors=store_factors, title=title)
+    display_logit_model(df=county_store_count_df, dependent=dependent, factors=store_factors, title=title)
 
-def view_type_count_analysis(county_store_type_df: pd.DataFrame, dependent: str, type_factors: list[str]):
-    display_ols_model(df=county_store_type_df, dependent=dependent, factors=type_factors, title="Store Type Count Model")
+def store_type_count_model(county_store_type_df: pd.DataFrame, dependent: str, type_factors: list[str], title: str):
+    display_ols_model(df=county_store_type_df, dependent=dependent, factors=type_factors, title=title)
 
-def view_type_makeup_analysis(county_store_type_df: pd.DataFrame, dependent: str, type_factors: list[str]):
+def store_type_percentage_makeup_model(county_store_type_df: pd.DataFrame, dependent: str, type_factors: list[str], title: str):
 
     for variable in type_factors:
         county_store_type_df[variable] = county_store_type_df.apply(lambda x: x[variable]/x["total_count"], axis=1)
     
-    display_ols_model(df=county_store_type_df, dependent=dependent, factors=type_factors, title="Store Type Percentage Model")
+    display_ols_model(df=county_store_type_df, dependent=dependent, factors=type_factors, title=title)
+    display_logit_model(df=county_store_type_df, dependent=dependent, factors=type_factors, title=title)
 
 
-def view_subtype_count_analysis(county_store_subtype_df: pd.DataFrame, dependent: str, subtype_factors: list[str]):
-    display_ols_model(df=county_store_subtype_df, dependent=dependent, factors=subtype_factors, title="Store Subtype Count Model")
+def store_subtype_count_model(county_store_subtype_df: pd.DataFrame, dependent: str, subtype_factors: list[str], title: str):
+    display_ols_model(df=county_store_subtype_df, dependent=dependent, factors=subtype_factors, title=title)
+    display_logit_model(df=county_store_subtype_df, dependent=dependent, factors=subtype_factors, title=title)
 
-def view_subtype_makeup_analysis(county_store_subtype_df: pd.DataFrame, dependent: str, subtype_factors: list[str]):
+def store_subtype_percentage_makeup_model(county_store_subtype_df: pd.DataFrame, dependent: str, subtype_factors: list[str], title):
     for variable in subtype_factors:
         county_store_subtype_df[variable] = county_store_subtype_df.apply(lambda x: x[variable]/x["total_count"], axis=1)
-    display_ols_model(df=county_store_subtype_df, dependent=dependent, factors=subtype_factors, title="Store Subtype Percentage Model")
+    display_ols_model(df=county_store_subtype_df, dependent=dependent, factors=subtype_factors, title=title)
+    display_logit_model(df=county_store_subtype_df, dependent=dependent, factors=subtype_factors, title=title)
 
-def view_fast_food_count_analysis(fast_food_df: pd.DataFrame, dependent: str, fast_food_factors: list[str]):
-    display_ols_model(df=fast_food_df, dependent=dependent, factors=fast_food_factors, title="Fast Food SubType Count Model")
+def fast_food_subtype_count_model(fast_food_df: pd.DataFrame, dependent: str, fast_food_factors: list[str], title: str):
+    display_ols_model(df=fast_food_df, dependent=dependent, factors=fast_food_factors, title=title)
+    display_logit_model(df=fast_food_df, dependent=dependent, factors=fast_food_factors, title=title)
 
-def view_fast_food_makeup_analysis(fast_food_df: pd.DataFrame, dependent: str, fast_food_factors: list[str]):
+def fast_food_subtype_percentage_makeup_model(fast_food_df: pd.DataFrame, dependent: str, fast_food_factors: list[str], title: str):
     for variable in fast_food_factors:
         fast_food_df[variable] = fast_food_df.apply(lambda x: x[variable]/x["total_count"], axis=1)
-    display_ols_model(df=fast_food_df, dependent=dependent, factors=fast_food_factors, title="Fast Food SubType Count Model")
+    display_ols_model(df=fast_food_df, dependent=dependent, factors=fast_food_factors, title=title)
+    display_logit_model(df=fast_food_df, dependent=dependent, factors=fast_food_factors, title=title)
 
 def display_ols_model(df: pd.DataFrame, dependent: str, factors: list[str], title: str):
     df.sort_values([dependent], ascending=True, inplace=True)
@@ -201,11 +204,13 @@ def display_ols_model(df: pd.DataFrame, dependent: str, factors: list[str], titl
     print(f"{Colors.CYAN}\nCORRELATION COEFFICIENTS{Colors.RESET}")
     print(df_corr)
 
+    
     plt.bar(x=df_corr.index, height=df_corr[dependent])
-    plt.title(f"Correlation for {title} Factors to {dependent}")
+    plt.title(f"Correlation Coefficient for {title} Factors to {dependent}")
     plt.xlabel(f"{title} Factors")
     plt.xticks(rotation=50)
-    plt.ylabel("Correlation Coeficient")
+    plt.ylabel("Correlation Coefficient")
+    plt.yticks(np.arange(-1, 1.1, .1))
     plt.show()
 
     df.sort_values([dependent], ascending=True, inplace=True)
@@ -216,20 +221,56 @@ def display_ols_model(df: pd.DataFrame, dependent: str, factors: list[str], titl
     pred_dependent_col = df[f"pred_{dependent}"]
     counties = df.index
 
-    plt.scatter(counties, dependent_col, alpha=.6, s=2, color="blue")
-    plt.scatter(counties, pred_dependent_col, alpha=.6, s=2, color="orange")
+    plt.scatter(counties, dependent_col, alpha=.6, s=2, color="blue", label=f"Actual {dependent}")
+    plt.scatter(counties, pred_dependent_col, alpha=.6, s=2, color="orange", label=f"Predicted {dependent}")
     plt.title(title)
     plt.xlabel("Counties")
     plt.ylabel(f"{dependent}")
-    plt.xlabel
+    plt.xticks([])
+    plt.legend()
     plt.show()
 
     plt.scatter(dependent_col, pred_dependent_col, s=2, alpha=.6)
-    plt.axline((0, 0), (dependent_col.max(), dependent_col.max()), color="green")
+    plt.axline((0, 0), (dependent_col.max(), dependent_col.max()), color="green", label="Line of Perfect Prediction")
     plt.title(f"{title} Accuracy")
     plt.xlabel(f"{dependent} Actual")
     plt.ylabel(f"{dependent} Predicted")
-    plt.show() 
+    plt.legend()
+    plt.show()
+
+def display_logit_model(df: pd.DataFrame, dependent: str, factors: list[str], title: str):
+    df.sort_values([dependent], ascending=True, inplace=True)
+
+    df_corr = df[factors + [dependent]].corr(numeric_only=True)[dependent].sort_values(ascending=True).to_frame()
+
+    positive_corr_coef_factors = list(filter(lambda x: df_corr.loc[x][dependent] > .1, factors))
+
+    dependent_median = df[dependent].median()
+    df[f"high_{dependent}"] = df[dependent].apply(lambda x: 1 if x >= dependent_median else 0)
+
+    # logit_model = logit(formula=f"high_{dependent} ~ {' + '.join(factors)}", data=df).fit()
+    logit_model = logit(formula=f"high_{dependent} ~ {' + '.join(positive_corr_coef_factors)}", data=df).fit()
+
+    df[f"prob_high_{dependent}"] = logit_model.predict(df[positive_corr_coef_factors])
+    df[f"pred_high_{dependent}"] = df[f"prob_high_{dependent}"].apply(lambda x: 1 if x >= .5 else 0)
+
+    conf_mat= confusion_matrix(df[f"high_{dependent}"], df[f"pred_high_{dependent}"])
+    class_report = classification_report(df[f"high_{dependent}"], df[f"pred_high_{dependent}"])
+
+    print(conf_mat)
+    print(class_report)
+
+    plt.scatter(df[dependent], df[f'prob_high_{dependent}'], s=1, alpha=.3, color="green", label=f"Probability of High {dependent}")
+    plt.scatter(df[dependent], df[f"high_{dependent}"], s=1.2,  alpha=1, color="blue", label=f"High {dependent}")
+    plt.scatter(df[dependent], df[f'pred_high_{dependent}'], s=1, alpha=.8, color="orange", label=f"Predicted High {dependent}")
+    plt.legend()
+    plt.title(f"Logit Prediction for {title}")
+    plt.xlabel(dependent)
+    plt.ylabel(f"High {dependent} Prediction")
+
+    plt.show()
+
+
 
 # Recieves the dataset with the counties information regarding median
 # home prices and the specific county that we are looking for
@@ -279,7 +320,7 @@ def get_company_type(company_name):
         'Dairy_Queen': 'fast_food',
         "Denny_s": "casual_dining",
         "Dominos": "fast_food",
-            "Dunkin": "cafe",
+        "Dunkin": "cafe",
         'Hardee_s': 'fast_food',
         'IHOP': 'casual_dining',
         "Jack_in_the_Box": "fast_food",
