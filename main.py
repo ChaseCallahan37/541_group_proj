@@ -20,7 +20,9 @@ RAW_REALTOR_FILE = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_
 RAW_COUNTIES_FILE = "./counties-data/raw-counties.csv"
 COUNTIES_FILE = "./counties-data/counties.csv"
 
-ZIP_CODES_FILE = "./zip-code-data/zip_code_database.csv"
+ZIP_CODES_FILE = "./zip-postal-data/zip_postal_database.csv"
+
+CENSUS_FILE = "./zip-data/census_zip.csv"
 
 class Colors:
     RED = '\033[91m'
@@ -48,7 +50,6 @@ def main():
     county_store_subtype_df = get_prepared_store_subtype_data(stores_df, counties_df).reset_index().set_index(["county"])
     fast_food_df = get_prepared_fast_food_data(stores_df, counties_df, county_store_subtype_df).reset_index().set_index(["county"])
     stores_by_zip_df = get_prepared_stores_by_zip(stores_df, census_zip_df).reset_index().set_index(["postal_code"])
-    print(stores_by_zip_df)
 
     # Factors for analysis
     dependent = "median"
@@ -524,13 +525,12 @@ def read_housing_file() -> pd.DataFrame:
     return pd.read_csv(REALTOR_FILE)
 
 def read_census_zip():
-    df =pd.read_csv("./census_zip_data/do_it_work.csv")
-    new_df = pd.DataFrame()
-    new_df["zip_code"] = df["NAME"].apply(lambda x: x.split(" ")[1] if pd.notnull(x) else np.nan)
-    new_df["median_income"] = df["S1902_C03_001E"].apply(convert_to_num).to_frame()
-    new_df = new_df[new_df["median_income"].notnull()]
-    return new_df
-    # [print(column) for column in df.columns]
+    orig_census_df =pd.read_csv(CENSUS_FILE)
+    census_df = pd.DataFrame()
+    census_df["zip_code"] = orig_census_df["NAME"].apply(lambda x: x.split(" ")[1] if pd.notnull(x) else np.nan)
+    census_df["median_income"] = orig_census_df["S1902_C03_001E"].apply(convert_to_num).to_frame()
+    census_df = census_df[census_df["median_income"].notnull()]
+    return census_df
 
 # Assumes , as delimiter by default
 def csv_to_df(file_name: str, delimiter: str =",") -> pd.DataFrame:
