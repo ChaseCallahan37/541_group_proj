@@ -43,52 +43,16 @@ def main():
         stores_df["county"] = stores_df["postal_code"].apply(lambda x: locate_county(zip_codes_df, x))
         stores_df.to_csv(path_or_buf=AGGREGATED_STORE_FILE)
 
-    
-    # PREPARE STORE COUNT DATA
-    stores_per_county = stores_df.groupby(["county","company_name"])[["county", "company_name"]].value_counts().to_frame().reset_index()
-    county_store_count_df = stores_per_county.pivot_table(index="county", columns="company_name", values="count", fill_value=0)
-    county_store_count_df["median"] = county_store_count_df.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
-    county_store_count_df = county_store_count_df[county_store_count_df["median"].notna()]
-
-    # PREPARE STORE TYPE DATA
-    types_per_county = stores_df.groupby(["county", "type"])[["county", "type"]].value_counts().to_frame().reset_index()
-    county_store_type_df = types_per_county.pivot_table(index="county", columns="type", values="count", fill_value=0)
-    county_store_type_df["total_count"] = county_store_type_df.apply(lambda x: x.sum() , axis=1)
-    county_store_type_df["median"] = county_store_type_df.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
-    county_store_type_df = county_store_type_df[county_store_type_df["median"].notna()]
-
-
-    # PREPARE STORE SUBTYPE DATA
-    subtypes_per_county = stores_df.groupby(["county", "subtype"])[["county", "subtype"]].value_counts().to_frame().reset_index()
-    county_store_subtype_df = subtypes_per_county.pivot_table(index="county", columns="subtype", values="count", fill_value=0)
-    county_store_subtype_df["total_count"] = county_store_subtype_df.apply(lambda x: x.sum() , axis=1)
-    county_store_subtype_df["median"] = county_store_subtype_df.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
-    county_store_subtype_df = county_store_subtype_df[county_store_subtype_df["median"].notna()]
-
-    # PREPARE FAST FOOD DATA
-    fast_food_stores = stores_df[stores_df["type"] == "fast_food"].groupby(["county", "subtype"])[["county", "subtype"]].value_counts().to_frame().reset_index()
-    fast_food_df = fast_food_stores.pivot_table(index="county", columns="subtype", values="count", fill_value=0)
-    fast_food_df["total_count"] = fast_food_df.apply(lambda x: x.sum(), axis=1)
-    fast_food_df["median"] = county_store_subtype_df.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
-    fast_food_df = fast_food_df[fast_food_df["median"].notna()]
-
-    # PREPARE CENSUS ZIP DATA
-    stores_by_zip = stores_df.groupby(["postal_code", "company_name"])[["postal_code", "company_name"]].value_counts().to_frame().reset_index()
-    stores_by_zip_df = stores_by_zip.pivot_table(index="postal_code", columns="company_name", values="count", fill_value=0)
-    stores_by_zip_df["median_income"] = list(stores_by_zip_df.apply(lambda x: get_zip_median_income(x.name, census_zip_df), axis=1))
-    stores_by_zip_df = stores_by_zip_df[stores_by_zip_df["median_income"].notna()]
-
+    county_store_count_df = get_prepared_store_count_data(stores_df, counties_df).reset_index().set_index(["county"])
+    county_store_type_df = get_prepared_store_type_data(stores_df, counties_df).reset_index().set_index(["county"])
+    county_store_subtype_df = get_prepared_store_subtype_data(stores_df, counties_df).reset_index().set_index(["county"])
+    fast_food_df = get_prepared_fast_food_data(stores_df, counties_df, county_store_subtype_df).reset_index().set_index(["county"])
+    stores_by_zip_df = get_prepared_stores_by_zip(stores_df, census_zip_df).reset_index().set_index(["postal_code"])
     print(stores_by_zip_df)
-
-    # CORRELATION COEFFICIENTS
-    median_cor = county_store_count_df.corr(numeric_only=True)["median"].sort_values(ascending=True)
-    # company_corr_df = median_cor.to_frame().reset_index().set_index("company_name").rename(columns={"median": "correlation_coefficient"})
-    company_corr_df = median_cor.to_frame().reset_index().rename(columns={"median": "correlation_coefficient"})
-    company_corr_df = company_corr_df[company_corr_df["company_name"] != "median"]
 
     # Factors for analysis
     dependent = "median"
-    store_factors = list(filter(lambda x: (x != dependent), county_store_count_df.columns))
+    store_factors = list(filter(lambda x: (x != dependent and x != "county"), county_store_count_df.columns))
     type_factors =  list(filter(lambda x: (not(x == dependent or x == "total_count")), county_store_type_df.columns))
     subtype_factors =  list(filter(lambda x: (not(x == dependent or x == "total_count")), county_store_subtype_df.columns))
     fast_food_factors = list(filter(lambda x: (not (x == dependent or x == "total_count")), fast_food_df.columns))
@@ -97,7 +61,6 @@ def main():
     menu_options = [
         {"title": "Store Count Model", "function": lambda title: store_count_model(county_store_count_df, dependent, store_factors, title),},
         {"title": "Total Store Count Model", "function": lambda title: total_store_count_model(county_store_count_df, dependent, store_factors, title),},
-        {"title": "High Correlation Coefficient Store Count Model", "function": lambda title: high_store_count_corr_coef_model(county_store_count_df,company_corr_df, dependent, store_factors, title),},
         {"title": "Store Percentage Model", "function": lambda title: store_percentage_makeup_model(county_store_count_df, dependent, store_factors, title),},
         {"title": "Store Type Count Model", "function": lambda title: store_type_count_model(county_store_type_df, dependent, type_factors, title),},
         {"title": "Store Type Percentage Model", "function": lambda title: store_type_percentage_makeup_model(county_store_type_df, dependent, type_factors, title),},
@@ -136,6 +99,81 @@ def menu_choice():
     except:
         print(f"{Colors.RED}{choice}{Colors.RESET} is not a valid optin!")
         return press_enter()
+    
+def get_prepared_store_count_data(stores_df: pd.DataFrame, counties_df:pd.DataFrame):
+    # PREPARE STORE COUNT DATA
+    file_name = "./cached_dfs/prepare_store_count_data.csv"
+    if(path.isfile(file_name)):
+        return pd.read_csv(file_name, index_col=0)
+    
+    stores_per_county = stores_df.groupby(["county","company_name"])[["county", "company_name"]].value_counts().to_frame().reset_index()
+    county_store_count_df = stores_per_county.pivot_table(index="county", columns="company_name", values="count", fill_value=0)
+    county_store_count_df["median"] = county_store_count_df.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
+    county_store_count_df = county_store_count_df[county_store_count_df["median"].notna()]
+    
+    county_store_count_df.to_csv(file_name)
+    return county_store_count_df
+
+def get_prepared_store_type_data(stores_df: pd.DataFrame, counties_df: pd.DataFrame):
+    # PREPARE STORE TYPE DATA
+    file_name = "./cached_dfs/prepared_store_type_data.csv"
+    if(path.isfile(file_name)):
+        return pd.read_csv(file_name, index_col=0)
+
+    
+    types_per_county = stores_df.groupby(["county", "type"])[["county", "type"]].value_counts().to_frame().reset_index()
+    county_store_type_df = types_per_county.pivot_table(index="county", columns="type", values="count", fill_value=0)
+    county_store_type_df["total_count"] = county_store_type_df.apply(lambda x: x.sum() , axis=1)
+    county_store_type_df["median"] = county_store_type_df.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
+    county_store_type_df = county_store_type_df[county_store_type_df["median"].notna()]
+
+    county_store_type_df.to_csv(file_name)
+
+    return county_store_type_df
+
+def get_prepared_store_subtype_data(stores_df: pd.DataFrame, counties_df: pd.DataFrame):
+    # PREPARE STORE SUBTYPE DATA
+    file_name = "./cached_dfs/prepared_store_subtype_data.csv"
+    if(path.isfile(file_name)):
+        return pd.read_csv(file_name, index_col=0)
+
+    subtypes_per_county = stores_df.groupby(["county", "subtype"])[["county", "subtype"]].value_counts().to_frame().reset_index()
+    county_store_subtype_df = subtypes_per_county.pivot_table(index="county", columns="subtype", values="count", fill_value=0)
+    county_store_subtype_df["total_count"] = county_store_subtype_df.apply(lambda x: x.sum() , axis=1)
+    county_store_subtype_df["median"] = county_store_subtype_df.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
+    county_store_subtype_df = county_store_subtype_df[county_store_subtype_df["median"].notna()]
+
+    county_store_subtype_df.to_csv(file_name)
+    return county_store_subtype_df
+
+def get_prepared_fast_food_data(stores_df: pd.DataFrame, counties_df: pd.DataFrame, county_store_subtype_df: pd.DataFrame):
+    # PREPARE FAST FOOD DATA
+    file_name = "./cached_dfs/prepared_fast_food_data.csv"
+    if(path.isfile(file_name)):
+        return pd.read_csv(file_name, index_col=0)
+    
+    fast_food_stores = stores_df[stores_df["type"] == "fast_food"].groupby(["county", "subtype"])[["county", "subtype"]].value_counts().to_frame().reset_index()
+    fast_food_df = fast_food_stores.pivot_table(index="county", columns="subtype", values="count", fill_value=0)
+    fast_food_df["total_count"] = fast_food_df.apply(lambda x: x.sum(), axis=1)
+    fast_food_df["median"] = county_store_subtype_df.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
+    fast_food_df = fast_food_df[fast_food_df["median"].notna()]
+
+    fast_food_df.to_csv(file_name)
+    return fast_food_df
+
+def get_prepared_stores_by_zip(stores_df: pd.DataFrame, census_zip_df: pd.DataFrame):
+    # PREPARE CENSUS ZIP DATA
+    file_name = "./cached_dfs/prepared_store_zip_data.csv"
+    if(path.isfile(file_name)):
+        return pd.read_csv(file_name, index_col=0)
+
+    stores_by_zip = stores_df.groupby(["postal_code", "company_name"])[["postal_code", "company_name"]].value_counts().to_frame().reset_index()
+    stores_by_zip_df = stores_by_zip.pivot_table(index="postal_code", columns="company_name", values="count", fill_value=0)
+    stores_by_zip_df["median_income"] = list(stores_by_zip_df.apply(lambda x: get_zip_median_income(x.name, census_zip_df), axis=1))
+    stores_by_zip_df = stores_by_zip_df[stores_by_zip_df["median_income"].notna()]
+
+    stores_by_zip_df.to_csv(file_name)
+    return stores_by_zip_df
 
 def store_count_model(county_store_count_df: pd.DataFrame, dependent: str, store_factors: list[str], title: str):
     display_ols_model(df=county_store_count_df, dependent=dependent, factors=store_factors, title=title)
@@ -199,11 +237,14 @@ def fast_food_subtype_percentage_makeup_model(fast_food_df: pd.DataFrame, depend
     display_logit_model(df=fast_food_df, dependent=dependent, factors=fast_food_factors, title=title)
 
 def display_ols_model(df: pd.DataFrame, dependent: str, factors: list[str], title: str):
+    index_name = df.index.name
     df.sort_values([dependent], ascending=True, inplace=True)
+    df.reset_index(drop=True, inplace=True)
     ols_model = ols(formula=f"{dependent} ~ {' + '.join(factors)}", data=df).fit()
     print(ols_model.summary())
 
-    df_corr = df[factors + [dependent]].corr(numeric_only=True)[dependent].sort_values(ascending=True).to_frame()
+    df_corr = df[factors + [dependent]].corr(numeric_only=True)[dependent].to_frame()
+    df_corr.sort_values([dependent], inplace=True, ascending=True)
     df_corr = df_corr[df_corr.index != dependent]
     print(f"{Colors.CYAN}\nCORRELATION COEFFICIENTS{Colors.RESET}")
     print(df_corr)
@@ -217,18 +258,18 @@ def display_ols_model(df: pd.DataFrame, dependent: str, factors: list[str], titl
     plt.yticks(np.arange(-1, 1.1, .1))
     plt.show()
 
-    df.sort_values([dependent], ascending=True, inplace=True)
 
     df[f"pred_{dependent}"] = ols_model.predict(df[factors])
 
     dependent_col = df[dependent]
     pred_dependent_col = df[f"pred_{dependent}"]
-    counties = df.index
+    index = df.index
 
-    plt.scatter(counties, dependent_col, alpha=.6, s=2, color="blue", label=f"Actual {dependent}")
-    plt.scatter(counties, pred_dependent_col, alpha=.6, s=2, color="orange", label=f"Predicted {dependent}")
+
+    plt.scatter(index, dependent_col, alpha=.6, s=2, color="blue", label=f"Actual {dependent}")
+    plt.scatter(index, pred_dependent_col, alpha=.6, s=2, color="orange", label=f"Predicted {dependent}")
     plt.title(title)
-    plt.xlabel("Counties")
+    plt.xlabel(index_name.capitalize())
     plt.ylabel(f"{dependent}")
     plt.xticks([])
     plt.legend()
