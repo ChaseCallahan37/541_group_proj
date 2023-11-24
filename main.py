@@ -36,6 +36,7 @@ def main():
     stores_df = read_store_data()
     counties_df = read_county_data()
     zip_codes_df = read_zip_data()
+    census_zip_df = read_census_zip()
 
     # If stores are not already populated with county, then do so and save it
     if not "county" in stores_df.columns:
@@ -71,7 +72,13 @@ def main():
     fast_food_df["median"] = county_store_subtype_df.apply(lambda x: get_county_median(counties_df, x.name), axis=1)
     fast_food_df = fast_food_df[fast_food_df["median"].notna()]
 
-    print(county_store_subtype_df)
+    # PREPARE CENSUS ZIP DATA
+    stores_by_zip = stores_df.groupby(["postal_code", "company_name"])[["postal_code", "company_name"]].value_counts().to_frame().reset_index()
+    stores_by_zip_df = stores_by_zip.pivot_table(index="postal_code", columns="company_name", values="count", fill_value=0)
+    stores_by_zip_df["median_income"] = list(stores_by_zip_df.apply(lambda x: get_zip_median_income(x.name, census_zip_df), axis=1))
+    stores_by_zip_df = stores_by_zip_df[stores_by_zip_df["median_income"].notna()]
+
+    print(stores_by_zip_df)
 
     # CORRELATION COEFFICIENTS
     median_cor = county_store_count_df.corr(numeric_only=True)["median"].sort_values(ascending=True)
@@ -98,6 +105,7 @@ def main():
         {"title": "Store Subtype Percentage Model", "function": lambda title: store_subtype_percentage_makeup_model(county_store_subtype_df, dependent, subtype_factors, title),},
         {"title": "Fast Food SubType Count Model", "function": lambda title: fast_food_subtype_count_model(fast_food_df, dependent, fast_food_factors, title),},
         {"title": "Fast Food SubType Count Model", "function": lambda title: fast_food_subtype_percentage_makeup_model(fast_food_df, dependent, fast_food_factors, title)},
+        {"title": "Store Count for Zip Model", "function": lambda title: store_count_model(stores_by_zip_df, dependent="median_income", store_factors=store_factors, title=title)}
     ]
 
 
@@ -265,6 +273,14 @@ def display_logit_model(df: pd.DataFrame, dependent: str, factors: list[str], ti
 
     plt.show()
 
+
+def get_zip_median_income(name, census_zip_df):
+    try:
+        found = census_zip_df[census_zip_df["zip_code"] == name]
+        num = int(found["median_income"])
+        return num
+    except:
+        return np.nan
 
 
 # Recieves the dataset with the counties information regarding median
@@ -466,6 +482,15 @@ def read_housing_file() -> pd.DataFrame:
         return pulled_housing_data
     return pd.read_csv(REALTOR_FILE)
 
+def read_census_zip():
+    df =pd.read_csv("./census_zip_data/do_it_work.csv")
+    new_df = pd.DataFrame()
+    new_df["zip_code"] = df["NAME"].apply(lambda x: x.split(" ")[1] if pd.notnull(x) else np.nan)
+    new_df["median_income"] = df["S1902_C03_001E"].apply(convert_to_num).to_frame()
+    new_df = new_df[new_df["median_income"].notnull()]
+    return new_df
+    # [print(column) for column in df.columns]
+
 # Assumes , as delimiter by default
 def csv_to_df(file_name: str, delimiter: str =",") -> pd.DataFrame:
     return pd.read_csv(file_name, sep=delimiter)
@@ -516,4 +541,11 @@ def press_enter():
     for i in range(0, 100): 
         print("\n")
         
+def convert_to_num(value):
+    try:
+        return int(value)
+    except:
+        return np.nan
+
+
 main()
