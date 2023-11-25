@@ -181,7 +181,8 @@ def store_count_model(county_store_count_df: pd.DataFrame, dependent: str, store
     display_logit_model(df=county_store_count_df, dependent=dependent, factors=store_factors, title=title)
 
 def total_store_count_model(county_store_count_df: pd.DataFrame, dependent: str, store_factors: list[str], title: str):
-    store_count_pred_df = county_store_count_df.reset_index()[["county", "median"]]
+    print(county_store_count_df)
+    store_count_pred_df = county_store_count_df.reset_index()
     store_count_pred_df["store_count"] = list(county_store_count_df[store_factors].sum(axis=1).to_frame()[0])
     
     display_ols_model(df=county_store_count_df, dependent=dependent, factors=store_factors, title=title)
@@ -270,7 +271,7 @@ def display_ols_model(df: pd.DataFrame, dependent: str, factors: list[str], titl
     plt.scatter(index, dependent_col, alpha=.6, s=2, color="blue", label=f"Actual {dependent}")
     plt.scatter(index, pred_dependent_col, alpha=.6, s=2, color="orange", label=f"Predicted {dependent}")
     plt.title(title)
-    plt.xlabel(index_name.capitalize())
+    plt.xlabel("Geographic Index")
     plt.ylabel(f"{dependent}")
     plt.xticks([])
     plt.legend()
