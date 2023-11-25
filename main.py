@@ -50,7 +50,6 @@ def main():
     county_store_subtype_df = get_prepared_store_subtype_data(stores_df, counties_df).reset_index().set_index(["county"])
     fast_food_df = get_prepared_fast_food_data(stores_df, counties_df, county_store_subtype_df).reset_index().set_index(["county"])
     stores_by_zip_df = get_prepared_stores_by_zip(stores_df, census_zip_df).reset_index().set_index(["postal_code"])
-    zips_with_store_distance_df = get_prepared_zips_with_store_distance(zip_codes_df, stores_df)
 
     # Factors for analysis
     dependent = "median"
@@ -176,15 +175,6 @@ def get_prepared_stores_by_zip(stores_df: pd.DataFrame, census_zip_df: pd.DataFr
 
     stores_by_zip_df.to_csv(file_name)
     return stores_by_zip_df
-
-def get_prepared_zips_with_store_distance(zip_codes_df: pd.DataFrame, stores_df: pd.DataFrame):
-    file_name = "./cached_dfs/prepared__zips_with_store_dist_data.csv"
-    if(path.isfile(file_name)):
-        return pd.read_csv(file_name, index_col=0)
-    
-    df = stores_df.groupby(["postal_code", "company_name"])[["latitude", "longitude"]].first()
-    print(df)
-    print("done")
 
 def store_count_model(county_store_count_df: pd.DataFrame, dependent: str, store_factors: list[str], title: str):
     display_ols_model(df=county_store_count_df, dependent=dependent, factors=store_factors, title=title)
