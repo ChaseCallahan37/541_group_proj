@@ -104,6 +104,10 @@ def menu_choice():
     
 def get_prepared_store_count_data(stores_df: pd.DataFrame, counties_df:pd.DataFrame):
     # PREPARE STORE COUNT DATA
+    
+    if not path.isdir("./cached_dfs"):
+        os.mkdir("./cached_dfs")
+
     file_name = "./cached_dfs/prepare_store_count_data.csv"
     if(path.isfile(file_name)):
         return pd.read_csv(file_name, index_col=0)
@@ -134,11 +138,7 @@ def get_prepared_store_type_data(stores_df: pd.DataFrame, counties_df: pd.DataFr
     return county_store_type_df
 
 def get_prepared_store_subtype_data(stores_df: pd.DataFrame, counties_df: pd.DataFrame):
-    # PREPARE STORE SUBTYPE DATA
-    
-    if not path.isdir("./cached_dfs"):
-        os.mkdir("./cached_dfs")
-        
+    # PREPARE STORE SUBTYPE DATA        
     file_name = "./cached_dfs/prepared_store_subtype_data.csv"
     if(path.isfile(file_name)):
         return pd.read_csv(file_name, index_col=0)
