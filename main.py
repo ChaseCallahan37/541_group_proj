@@ -190,8 +190,8 @@ def total_store_count_model(county_store_count_df: pd.DataFrame, dependent: str,
     store_count_pred_df = county_store_count_df.reset_index()
     store_count_pred_df["store_count"] = list(county_store_count_df[store_factors].sum(axis=1).to_frame()[0])
     
-    display_ols_model(df=county_store_count_df, dependent=dependent, factors=store_factors, title=title)
-    display_logit_model(df=county_store_count_df, dependent=dependent, factors=store_factors, title=title)
+    display_ols_model(df=store_count_pred_df, dependent=dependent, factors=["store_count"], title=title)
+    display_logit_model(df=store_count_pred_df, dependent=dependent, factors=["store_count"], title=title)
     
 def high_store_count_corr_coef_model(county_store_count_df: pd.DataFrame, company_corr_df, dependent: str, store_factors: list[str], title: str):
     county_store_count_df.sort_values(["median"], ascending=True, inplace=True)
@@ -455,7 +455,7 @@ def get_company_subtype(company_name):
         'Wendys': 'burger_restaurant',
          "Whataburger": "burger_restaurant",
         'White_Castle': 'burger_restaurant',
-        "Wingstop": "chicken_wings_restaurant",
+        "Wingstop": "3",
         "Zaxbys": "chicken_restaurant",
     }
     return company_subtypes.get(company_name, 'Unknown')
