@@ -66,7 +66,7 @@ def main():
         {"title": "Store Subtype Count Model", "function": lambda title: store_subtype_count_model(county_store_subtype_df, dependent, subtype_factors, title),},
         {"title": "Store Subtype Percentage Model", "function": lambda title: store_subtype_percentage_makeup_model(county_store_subtype_df, dependent, subtype_factors, title),},
         {"title": "Fast Food SubType Count Model", "function": lambda title: fast_food_subtype_count_model(fast_food_df, dependent, fast_food_factors, title),},
-        {"title": "Fast Food SubType Count Model", "function": lambda title: fast_food_subtype_percentage_makeup_model(fast_food_df, dependent, fast_food_factors, title)},
+        {"title": "Fast Food SubType Percentage Model", "function": lambda title: fast_food_subtype_percentage_makeup_model(fast_food_df, dependent, fast_food_factors, title)},
         {"title": "Store Count for Zip Model", "function": lambda title: store_count_model(stores_by_zip_df, dependent="median_income", store_factors=store_factors, title=title)}
     ]
 
