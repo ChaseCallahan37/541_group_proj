@@ -15,9 +15,6 @@ from sklearn.metrics import mean_absolute_error, confusion_matrix, classificatio
 AGGREGATED_STORE_FILE = "store-data-aggregate.csv"
 AGGREGATED_STORE_RAW_URL = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/store-data-aggregate.csv"
 
-REALTOR_FILE = "./realtor-data/realtor-data.csv"
-RAW_REALTOR_FILE = "https://raw.githubusercontent.com/ChaseCallahan37/541_group_proj/main/realtor-data/realtor-data.csv"
-
 RAW_COUNTIES_FILE = "./counties-data/raw-counties.csv"
 COUNTIES_FILE = "./counties-data/counties.csv"
 
@@ -481,17 +478,6 @@ def get_company_subtype(company_name):
         "Zaxbys": "chicken_restaurant",
     }
     return company_subtypes.get(company_name, 'Unknown')
-
-
-def retrieve_realtor_file() -> pd.DataFrame:
-    # Checks for aggregated first, if not found,
-    # then aggregated will be generated and returned
-    if not path.isfile(REALTOR_FILE):
-        return read_housing_data()
-    # Otherwise we grab the aggregated data and return it
-    # as a data frame
-    else:
-        return csv_to_df(REALTOR_FILE)
     
 def retrieve_store_file() -> pd.DataFrame:
     if path.isfile(AGGREGATED_STORE_FILE):
@@ -544,13 +530,6 @@ def read_county_file() -> pd.DataFrame:
     if path.isfile(COUNTIES_FILE):
         return pd.read_csv(COUNTIES_FILE)
     return prepare_counties_data(RAW_COUNTIES_FILE)
-
-def read_housing_file() -> pd.DataFrame:
-    if not path.isfile(REALTOR_FILE):
-        pulled_housing_data = pd.read_csv(RAW_REALTOR_FILE)
-        pulled_housing_data.to_csv(path_or_buf="./housing-data/realtor-data.csv")
-        return pulled_housing_data
-    return pd.read_csv(REALTOR_FILE)
 
 def read_census_zip():
     orig_census_df =pd.read_csv(CENSUS_FILE)
