@@ -250,7 +250,30 @@ def display_ols_model(df: pd.DataFrame, dependent: str, factors: list[str], titl
     ols_model = ols(formula=f"{dependent} ~ {' + '.join(factors)}", data=df).fit()
     print(ols_model.summary())
 
-    df_corr = df[factors + [dependent]].corr(numeric_only=True)[dependent].to_frame()
+    pvalues_df = pd.DataFrame(ols_model.pvalues).reset_index()
+    pvalues_df.columns = ["factors", "pvalues"]
+    pvalues_df = pvalues_df[pvalues_df["factors"] != "Intercept"]
+
+    coef_df = pd.DataFrame(ols_model.params).reset_index()
+    coef_df.columns = ["factors", "coefficients"]
+    
+    pvalues_df["coefficients"] = pvalues_df["factors"].apply(lambda x: coef_df[coef_df["factors"] == x]["coefficients"].values[0])
+    pvalues_df.sort_values(["coefficients"], ascending=True, inplace=True)
+
+    print(f"{Colors.CYAN}\nCOEFFICIENTS{Colors.RESET}")
+
+    print(pvalues_df)
+
+    plt.bar(pvalues_df["factors"], pvalues_df["coefficients"])
+    plt.title("Coefficients of Statistically Significant Factors")
+    plt.ylabel("Coefficients (in millions)")
+    plt.xlabel("Factores")
+    plt.xticks(rotation=50)
+    plt.show()
+
+    stat_sig_facts = list(pvalues_df[pvalues_df["pvalues"] < .05]["factors"])
+
+    df_corr = df[stat_sig_facts + [dependent]].corr(numeric_only=True)[dependent].to_frame()
     df_corr.sort_values([dependent], inplace=True, ascending=True)
     df_corr = df_corr[df_corr.index != dependent]
     print(f"{Colors.CYAN}\nCORRELATION COEFFICIENTS{Colors.RESET}")
@@ -271,7 +294,6 @@ def display_ols_model(df: pd.DataFrame, dependent: str, factors: list[str], titl
     dependent_col = df[dependent]
     pred_dependent_col = df[f"pred_{dependent}"]
     index = df.index
-
 
     plt.scatter(index, dependent_col, alpha=.6, s=2, color="blue", label=f"Actual {dependent}")
     plt.scatter(index, pred_dependent_col, alpha=.6, s=2, color="orange", label=f"Predicted {dependent}")
