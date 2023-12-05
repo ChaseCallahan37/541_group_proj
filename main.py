@@ -435,7 +435,7 @@ def get_company_type(company_name):
 def get_company_subtype(company_name):
     company_subtypes = {
         'Arbys': 'sandwich_shop',
-        'Buffalo_Wild_Wings': 'sports_bar',
+        'Buffalo_Wild_Wings': 'chicken_wing_restaurant',
         'Build_A_Bear': 'toy_store',
         'Burger_King': 'burger_restaurant',
         "Caribou": "coffee_shop",
@@ -474,7 +474,7 @@ def get_company_subtype(company_name):
         'Wendys': 'burger_restaurant',
          "Whataburger": "burger_restaurant",
         'White_Castle': 'burger_restaurant',
-        "Wingstop": "3",
+        "Wingstop": "chicken_wing_restaurant",
         "Zaxbys": "chicken_restaurant",
     }
     return company_subtypes.get(company_name, 'Unknown')
