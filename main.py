@@ -186,9 +186,9 @@ def total_store_count_model(county_store_count_df: pd.DataFrame, dependent: str,
     print(county_store_count_df)
     store_count_pred_df = county_store_count_df.reset_index()
     store_count_pred_df["store_count"] = list(county_store_count_df[store_factors].sum(axis=1).to_frame()[0])
-    
-    display_ols_model(df=store_count_pred_df, dependent=dependent, factors=["store_count"], title=title)
-    display_logit_model(df=store_count_pred_df, dependent=dependent, factors=["store_count"], title=title)
+    total_store_factors = store_factors + ["store_count"]
+    display_ols_model(df=store_count_pred_df, dependent=dependent, factors=total_store_factors, title=title)
+    display_logit_model(df=store_count_pred_df, dependent=dependent, factors=total_store_factors, title=title)
     
 def high_store_count_corr_coef_model(county_store_count_df: pd.DataFrame, company_corr_df, dependent: str, store_factors: list[str], title: str):
     county_store_count_df.sort_values(["median"], ascending=True, inplace=True)
